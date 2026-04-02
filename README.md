@@ -6,7 +6,11 @@ Notice, you're still stopped by ollama's internal guardrails when trying to quer
 
 ## Features
 
-- **Local Document Processing**: Load and index PDF documents from a local directory
+- **Web-based UI**: Streamlit interface for document management, indexing, and chat
+- **Ollama Integration**: Start/stop Ollama server directly from the UI, with model selection
+- **File Management**: Upload documents via drag-and-drop, delete with confirmation dialogs
+- **Chat Interface**: Conversational Q&A with conversation history and clear chat option
+- **Local Document Processing**: Load and index PDF, Word, and text documents from a local directory
 - **Persistent Embeddings**: ChromaDB stores embeddings locally, avoiding reprocessing on subsequent runs
 - **Interactive Query Mode**: Ask questions interactively or run predefined test queries
 - **Comprehensive Logging**: Detailed logging for debugging and observability
@@ -26,7 +30,11 @@ The following changes have been made to the original tutorial code:
 3. **Interactive Query Mode**: Added CLI flag for interactive mode allowing users to ask questions in a loop
 4. **ChromaDB Persistence**: Implemented persistent storage of embeddings to `./chroma_db`, preventing regeneration on every run
 5. **CLI Arguments**: Added command-line flags for `--reindex` (force reindexing), `--interactive` (interactive mode), and `--reset` (reset data)
-6. **Ollama Server Check**: Added connection validation to ensure Ollama is running before processing
+6. **Refactored Architecture**: Extracted core logic into `RAGEngine` class with lazy initialization - no side effects on import
+7. **Test Suite**: Comprehensive unit and integration tests (46 tests) using pytest
+8. **Streamlit Web UI**: Full-featured web interface (`app.py`) with sidebar for Ollama management, file upload, indexing controls, and chat interface
+9. **Privacy-First**: Telemetry disabled via `.streamlit/config.toml` - no usage stats sent to external servers
+10. **Safety Features**: Delete confirmation dialogs to prevent accidental data loss
 
 ## Dependencies
 
@@ -38,6 +46,7 @@ The following changes have been made to the original tutorial code:
 | `llama-index-vector-stores-chroma>=0.5.0` | ChromaDB vector store connector |
 | `chromadb>=0.5.0` | Chroma vector database for embedding storage |
 | `pypdf>=4.0` | PDF text extraction library |
+| `streamlit>=1.30.0` | Web UI framework for interactive interface |
 
 ## Supported Document Types
 
@@ -80,13 +89,36 @@ The RAG system supports the following document formats:
 
 ## Usage
 
-### Basic Test (Predefined Questions)
+### Streamlit Web UI (Recommended)
+
+The easiest way to use the RAG system is through the Streamlit web interface:
+
+```bash
+./venv/bin/streamlit run app.py
+```
+
+This opens a web UI at `http://localhost:8501` with:
+- **Sidebar**: Ollama controls (start/stop, model selection), file upload, document list with delete, indexing buttons
+- **Main area**: Chat interface with conversation history
+
+Features in the UI:
+- Upload documents via drag-and-drop or file picker
+- Delete documents with confirmation dialog
+- Index or reindex documents with visual feedback
+- Chat with your documents in a conversational interface
+- Clear chat history anytime
+
+### CLI Mode
+
+For command-line usage:
+
+#### Basic Test (Predefined Questions)
 
 ```bash
 python custom-rag.py
 ```
 
-### Interactive Mode
+#### Interactive Mode
 
 ```bash
 python custom-rag.py --interactive
@@ -125,8 +157,23 @@ python custom-rag.py --interactive --reindex
 
 ```
 custom-rag/
-├── custom-rag.py          # Main RAG script
+├── app.py                 # Streamlit web interface
+├── rag_engine.py          # Core RAGEngine class (lazy init, all RAG logic)
+├── custom-rag.py          # CLI wrapper around RAGEngine
 ├── requirements.txt       # Python dependencies
+├── requirements-dev.txt   # Development dependencies (pytest, pytest-mock)
+├── .streamlit/
+│   └── config.toml        # Streamlit config (telemetry disabled)
+├── tests/                 # Test suite
+│   ├── conftest.py        # Pytest fixtures
+│   ├── unit/
+│   │   └── test_rag_engine.py
+│   └── integration/
+│       ├── test_app_ollama.py
+│       ├── test_chat_flow.py
+│       ├── test_indexing_flow.py
+│       ├── test_ollama_lifecycle.py
+│       └── test_upload_index.py
 ├── data/                  # Place PDF, Word, and text documents here
 ├── chroma_db/             # Persistent ChromaDB storage (auto-created)
 └── README.md             # This file
@@ -136,8 +183,15 @@ custom-rag/
 
 Potential improvements and experiments to explore:
 
+- ✅ **Create an interactive UI for the RAG**: ~~Build a web-based or desktop GUI interface to make the RAG system more accessible to non-technical users~~ **DONE** - Streamlit UI implemented with file management, indexing, and chat
+- Test the UI with different document types and sizes
+- Improve the UI with better error handling and user feedback
+- Fix bugs in the UI
 - **Chunk size optimization experiments**: Test different chunk sizes and overlap settings to find optimal balance between context preservation and retrieval precision
 - **Retrieval tuning differences with similarity_top_k and response_mode**: Experiment with different `similarity_top_k` values (e.g., 3, 5, 10) and response modes (`compact`, `tree_summarize`, `accumulate`) to optimize answer quality
-- **Create an interactive UI for the RAG**: Build a web-based or desktop GUI interface to make the RAG system more accessible to non-technical users
+- **Source citations in chat**: Show which document chunks were used to generate each answer
+- **Conversation memory**: Enable multi-turn context-aware conversations using chat history
+- **Multiple collection support**: Allow organizing documents into separate collections/projects
+- **Export chat history**: Save conversations to JSON or Markdown files
 
 Based on the tutorial by Aayush Mishra. Modifications and changes by the repository owner.
