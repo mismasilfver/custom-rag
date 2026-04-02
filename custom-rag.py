@@ -5,6 +5,7 @@ from llama_index.llms.ollama import Ollama
 from llama_index.vector_stores.chroma import ChromaVectorStore
 import chromadb
 import logging
+import shutil
 import sys
 
 logging.basicConfig(
@@ -13,6 +14,38 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger(__name__)
+
+def reset_data(data_dir="data", chroma_dir="./chroma_db"):
+    """Delete chroma_db folder and remove all pdf, doc, docx, txt files from data folder"""
+    logger.info("=" * 60)
+    logger.info("Resetting RAG data")
+    logger.info("=" * 60)
+
+    # Delete chroma_db folder
+    chroma_path = Path(chroma_dir)
+    if chroma_path.exists():
+        logger.info(f"Deleting ChromaDB folder: {chroma_path.absolute()}")
+        shutil.rmtree(chroma_path)
+        logger.info("ChromaDB folder deleted successfully")
+    else:
+        logger.info("ChromaDB folder does not exist, nothing to delete")
+
+    # Delete document files from data folder
+    data_path = Path(data_dir)
+    if data_path.exists():
+        doc_extensions = {".pdf", ".doc", ".docx", ".txt"}
+        deleted_count = 0
+        for file_path in data_path.iterdir():
+            if file_path.is_file() and file_path.suffix.lower() in doc_extensions:
+                logger.info(f"Deleting file: {file_path.name}")
+                file_path.unlink()
+                deleted_count += 1
+        logger.info(f"Deleted {deleted_count} document files from '{data_dir}'")
+    else:
+        logger.info(f"Data directory '{data_dir}' does not exist, nothing to clean")
+
+    logger.info("Reset complete. You can now add new files and re-index.")
+    return True
 
 def check_ollama_connection(host="http://localhost:11434", timeout=5):
     """Check if Ollama server is reachable"""
@@ -218,6 +251,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="RAG System with ChromaDB persistence")
+    parser.add_argument("--reset", action="store_true", help="Delete chroma_db and clear data folder documents")
     parser.add_argument("--reindex", action="store_true", help="Force re-creation of embeddings")
     parser.add_argument("--interactive", "-i", action="store_true", help="Run in interactive query mode")
     args = parser.parse_args()
@@ -225,6 +259,12 @@ if __name__ == "__main__":
     logger.info("=" * 60)
     logger.info("Starting RAG Pipeline")
     logger.info("=" * 60)
+
+    if args.reset:
+        reset_success = reset_data()
+        if reset_success:
+            print("\nReset complete. Add new files to the data folder and run without --reset to re-index.")
+        sys.exit(0 if reset_success else 1)
 
     if args.reindex:
         logger.info("--reindex flag set: Will recreate embeddings")
@@ -236,6 +276,8 @@ if __name__ == "__main__":
     if success:
         print("\nRAG system is working correctly!")
         if not args.interactive:
+            print("\nTo reset and start fresh with new documents:")
+            print("  ./venv/bin/python custom-rag.py --reset")
             print("\nTo ask questions interactively, run:")
             print("  ./venv/bin/python custom-rag.py --interactive")
             print("\nTo force re-index (if you add new documents):")

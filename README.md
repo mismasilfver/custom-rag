@@ -25,7 +25,7 @@ The following changes have been made to the original tutorial code:
 2. **Dependency Version Pinning**: Pinned all dependencies to compatible versions to avoid API conflicts (specifically resolved `llama-index-workflows` 2.x breaking changes). Now using latest llama-index 0.14.x with Python 3.14.
 3. **Interactive Query Mode**: Added CLI flag for interactive mode allowing users to ask questions in a loop
 4. **ChromaDB Persistence**: Implemented persistent storage of embeddings to `./chroma_db`, preventing regeneration on every run
-5. **CLI Arguments**: Added command-line flags for `--reindex` (force reindexing) and `--interactive` (interactive mode)
+5. **CLI Arguments**: Added command-line flags for `--reindex` (force reindexing), `--interactive` (interactive mode), and `--reset` (reset data)
 6. **Ollama Server Check**: Added connection validation to ensure Ollama is running before processing
 
 ## Dependencies
@@ -38,6 +38,13 @@ The following changes have been made to the original tutorial code:
 | `llama-index-vector-stores-chroma>=0.5.0` | ChromaDB vector store connector |
 | `chromadb>=0.5.0` | Chroma vector database for embedding storage |
 | `pypdf>=4.0` | PDF text extraction library |
+
+## Supported Document Types
+
+The RAG system supports the following document formats:
+- PDF (`.pdf`)
+- Microsoft Word (`.doc`, `.docx`)
+- Plain text (`.txt`)
 
 ## Installation
 
@@ -69,7 +76,7 @@ The following changes have been made to the original tutorial code:
    ```
 
 4. **Add your documents**:
-   Place PDF files in the `data/` directory
+   Place PDF, Word, or text files in the `data/` directory
 
 ## Usage
 
@@ -91,6 +98,16 @@ python custom-rag.py --interactive
 python custom-rag.py --reindex
 ```
 
+### Reset and Start Fresh
+
+Delete the ChromaDB vector database and clear all document files from the data folder. This is useful when you want to start with a completely new set of documents.
+
+```bash
+python custom-rag.py --reset
+```
+
+After resetting, add your new documents to the `data/` folder and run normally to create a fresh vector database.
+
 ### Combined (Interactive with Reindex)
 
 ```bash
@@ -110,11 +127,17 @@ python custom-rag.py --interactive --reindex
 custom-rag/
 ├── custom-rag.py          # Main RAG script
 ├── requirements.txt       # Python dependencies
-├── data/                  # Place PDF documents here
+├── data/                  # Place PDF, Word, and text documents here
 ├── chroma_db/             # Persistent ChromaDB storage (auto-created)
 └── README.md             # This file
 ```
 
-## License
+## Todo and Experiment
+
+Potential improvements and experiments to explore:
+
+- **Chunk size optimization experiments**: Test different chunk sizes and overlap settings to find optimal balance between context preservation and retrieval precision
+- **Retrieval tuning differences with similarity_top_k and response_mode**: Experiment with different `similarity_top_k` values (e.g., 3, 5, 10) and response modes (`compact`, `tree_summarize`, `accumulate`) to optimize answer quality
+- **Create an interactive UI for the RAG**: Build a web-based or desktop GUI interface to make the RAG system more accessible to non-technical users
 
 Based on the tutorial by Aayush Mishra. Modifications and changes by the repository owner.
