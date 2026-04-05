@@ -19,7 +19,9 @@ class RAGEngine:
         data_dir="data",
         chroma_dir="./chroma_db",
         ollama_host="http://localhost:11434",
-        model_name="llama3.1:8b",
+        # model_name="llama3.1:8b",
+        model_name="phi4",
+        # embed_model_name="bge-m3:latest",
         embed_model_name="nomic-embed-text:latest",
     ):
         self.data_dir = data_dir
@@ -218,7 +220,7 @@ class RAGEngine:
             self._query_engine = self._index.as_query_engine(
                 llm=self._get_llm(),
                 similarity_top_k=similarity_top_k,
-                response_mode="compact",
+                response_mode="tree_summarize",
             )
 
         logger.info(f"Processing query: '{question}'")
