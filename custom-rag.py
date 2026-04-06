@@ -12,6 +12,20 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def format_sources_for_display(sources):
+    """Format source information for CLI display."""
+    if not sources:
+        return ""
+
+    lines = ["\n" + "-" * 40, "Sources:"]
+    for source in sources:
+        page_info = f", Page {source['page_label']}" if source.get("page_label") else ""
+        lines.append(f"\n[{source['number']}] {source['file_name']}{page_info}")
+        lines.append(f"    {source['snippet'][:100]}...")
+    lines.append("-" * 40)
+    return "\n".join(lines)
+
+
 def interactive_query_mode(engine):
     """Run interactive query mode - ask questions until user quits"""
     print("\n" + "=" * 60)
@@ -31,8 +45,11 @@ def interactive_query_mode(engine):
             if not query:
                 continue
 
-            response = engine.query(query)
-            print(f"\nAnswer: {response}")
+            result = engine.query_with_sources(query)
+            print(f"\nAnswer: {result['answer']}")
+
+            if result['sources']:
+                print(format_sources_for_display(result['sources']))
 
         except KeyboardInterrupt:
             print("\nGoodbye!")
@@ -56,8 +73,12 @@ def run_test_queries(engine):
         print("-" * 40)
 
         try:
-            response = engine.query(query)
-            print(f"Response: {response}")
+            result = engine.query_with_sources(query)
+            print(f"Response: {result['answer']}")
+
+            if result['sources']:
+                print(format_sources_for_display(result['sources']))
+
             print(f"Status: SUCCESS")
         except Exception as e:
             logger.error(f"Query {i} failed: {e}")

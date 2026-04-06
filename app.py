@@ -25,7 +25,7 @@ def get_engine():
 
 
 def render_chat_section(engine):
-    """Render the chat interface with conversation history."""
+    """Render the chat interface with conversation history and source citations."""
     st.markdown("---")
     st.subheader("💬 Chat with your documents")
 
@@ -37,7 +37,12 @@ def render_chat_section(engine):
             if "sources" in message and message["sources"]:
                 with st.expander("📚 Source references"):
                     for source in message["sources"]:
-                        st.caption(source)
+                        page_info = f", Page {source['page_label']}" if source.get("page_label") else ""
+                        st.markdown(
+                            f"**[{source['number']}] {source['file_name']}**{page_info}"
+                        )
+                        st.caption(source["snippet"])
+                        st.markdown("---")
 
     # Chat input
     if prompt := st.chat_input("Ask a question about your documents..."):
@@ -52,13 +57,28 @@ def render_chat_section(engine):
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
                 try:
-                    response = engine.query(prompt)
-                    st.markdown(response)
+                    result = engine.query_with_sources(prompt)
+                    answer = result["answer"]
+                    sources = result["sources"]
+
+                    st.markdown(answer)
+
+                    # Display source references
+                    if sources:
+                        with st.expander("📚 Source references"):
+                            for source in sources:
+                                page_info = f", Page {source['page_label']}" if source.get("page_label") else ""
+                                st.markdown(
+                                    f"**[{source['number']}] {source['file_name']}**{page_info}"
+                                )
+                                st.caption(source["snippet"])
+                                st.markdown("---")
+
                     # Store assistant response in history
                     st.session_state.messages.append({
                         "role": "assistant",
-                        "content": response,
-                        "sources": [],  # Could extract sources from response metadata
+                        "content": answer,
+                        "sources": sources,
                     })
                 except Exception as e:
                     error_msg = f"❌ Error: {str(e)}"
