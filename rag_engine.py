@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import shutil
 import subprocess
 import time
@@ -9,6 +10,38 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 SUPPORTED_EXTENSIONS = {".pdf", ".doc", ".docx", ".txt"}
+
+
+def _clean_text_for_display(text, max_length=200):
+    """Clean text content for display by removing binary/non-printable characters.
+
+    Args:
+        text: Raw text content from document
+        max_length: Maximum length for snippet
+
+    Returns:
+        Cleaned text string safe for display
+    """
+    if not text:
+        return ""
+
+    # Replace null bytes and other control characters
+    # Keep only printable ASCII and common Unicode characters
+    cleaned = "".join(
+        char if (ord(char) >= 32 or char in '\n\r\t') and ord(char) < 0x110000
+        else " "
+        for char in text
+    )
+
+    # Remove multiple consecutive whitespace
+    cleaned = re.sub(r'\s+', ' ', cleaned)
+
+    # Strip and truncate
+    cleaned = cleaned.strip()
+    if len(cleaned) > max_length:
+        cleaned = cleaned[:max_length] + "..."
+
+    return cleaned
 
 
 class RAGEngine:
@@ -211,6 +244,26 @@ class RAGEngine:
 
     # ── Querying ──────────────────────────────────────────────────────
 
+    def _get_citation_prompt_template(self):
+        """Create a prompt template that encourages citation generation."""
+        from llama_index.core import PromptTemplate
+
+        qa_prompt_str = (
+            "Context information is below.\n"
+            "---------------------\n"
+            "{context_str}\n"
+            "---------------------\n"
+            "Given the context information and not prior knowledge, "
+            "answer the question. Please cite the sources of your information "
+            "using numbered references like [1], [2], etc. Place citations "
+            "immediately after the relevant information.\n"
+            "At the end of your response, include a 'References' section listing "
+            "each cited source with its number.\n\n"
+            "Question: {query_str}\n"
+            "Answer: "
+        )
+        return PromptTemplate(qa_prompt_str)
+
     def query(self, question, similarity_top_k=3):
         """Query the index and return the response string."""
         if self._index is None:
@@ -226,6 +279,71 @@ class RAGEngine:
         logger.info(f"Processing query: '{question}'")
         response = self._query_engine.query(question)
         return str(response)
+
+    def query_with_sources(self, question, similarity_top_k=3):
+        """Query the index and return response with source information.
+
+        Returns a dict with:
+        - answer: The LLM response string
+        - sources: List of source dicts with number, file_name, page_label, snippet, score
+        """
+        if self._index is None:
+            self.index()
+
+        if self._query_engine is None:
+            from llama_index.core import PromptTemplate
+
+            # Create citation-aware prompt
+            qa_prompt_str = (
+                "Context information is below.\n"
+                "---------------------\n"
+                "{context_str}\n"
+                "---------------------\n"
+                "Given the context information and not prior knowledge, "
+                "answer the question. Please cite the sources of your information "
+                "using numbered references like [1], [2], etc. Place citations "
+                "immediately after the relevant information.\n"
+                "At the end of your response, include a 'References' section listing "
+                "each cited source with its number.\n\n"
+                "Question: {query_str}\n"
+                "Answer: "
+            )
+            qa_prompt = PromptTemplate(qa_prompt_str)
+
+            self._query_engine = self._index.as_query_engine(
+                llm=self._get_llm(),
+                similarity_top_k=similarity_top_k,
+                response_mode="tree_summarize",
+                text_qa_template=qa_prompt,
+            )
+
+        logger.info(f"Processing query with sources: '{question}'")
+        response = self._query_engine.query(question)
+
+        # Extract source information from response
+        sources = []
+        if hasattr(response, 'source_nodes') and response.source_nodes:
+            for i, source_node in enumerate(response.source_nodes, 1):
+                node = source_node.node
+                metadata = node.metadata
+
+                # Get content snippet and clean it for display
+                content = node.get_content()
+                snippet = _clean_text_for_display(content, max_length=200)
+
+                source = {
+                    "number": i,
+                    "file_name": metadata.get("file_name", "Unknown"),
+                    "page_label": metadata.get("page_label"),
+                    "snippet": snippet,
+                    "score": getattr(source_node, 'score', None),
+                }
+                sources.append(source)
+
+        return {
+            "answer": str(response),
+            "sources": sources,
+        }
 
     # ── Reset ─────────────────────────────────────────────────────────
 
