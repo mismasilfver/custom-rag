@@ -2,13 +2,13 @@ import argparse
 import logging
 import sys
 
-from rag_engine import RAGEngine
 from project_manager import ProjectManager
+from rag_engine import RAGEngine
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ def interactive_query_mode(engine):
         try:
             query = input("\nYour question: ").strip()
 
-            if query.lower() in ('quit', 'exit', 'q'):
+            if query.lower() in ("quit", "exit", "q"):
                 print("Goodbye!")
                 break
 
@@ -49,8 +49,8 @@ def interactive_query_mode(engine):
             result = engine.query_with_sources(query)
             print(f"\nAnswer: {result['answer']}")
 
-            if result['sources']:
-                print(format_sources_for_display(result['sources']))
+            if result["sources"]:
+                print(format_sources_for_display(result["sources"]))
 
         except KeyboardInterrupt:
             print("\nGoodbye!")
@@ -77,8 +77,8 @@ def run_test_queries(engine):
             result = engine.query_with_sources(query)
             print(f"Response: {result['answer']}")
 
-            if result['sources']:
-                print(format_sources_for_display(result['sources']))
+            if result["sources"]:
+                print(format_sources_for_display(result["sources"]))
 
             print(f"Status: SUCCESS")
         except Exception as e:
@@ -96,10 +96,24 @@ def main():
         logger.info("Migrated legacy data to 'default' project.")
 
     parser = argparse.ArgumentParser(description="RAG System with ChromaDB persistence")
-    parser.add_argument("--reset", action="store_true", help="Delete chroma_db and clear data folder documents")
-    parser.add_argument("--reindex", action="store_true", help="Force re-creation of embeddings")
-    parser.add_argument("--interactive", "-i", action="store_true", help="Run in interactive query mode")
-    parser.add_argument("--project", "-p", type=str, default="default", help="Project to use (creates it if it doesn't exist)")
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Delete chroma_db and clear data folder documents",
+    )
+    parser.add_argument(
+        "--reindex", action="store_true", help="Force re-creation of embeddings"
+    )
+    parser.add_argument(
+        "--interactive", "-i", action="store_true", help="Run in interactive query mode"
+    )
+    parser.add_argument(
+        "--project",
+        "-p",
+        type=str,
+        default="default",
+        help="Project to use (creates it if it doesn't exist)",
+    )
     args = parser.parse_args()
 
     # Ensure project exists
@@ -113,8 +127,7 @@ def main():
         sys.exit(1)
 
     engine = RAGEngine(
-        data_dir=project_paths["data_dir"],
-        chroma_dir=project_paths["chroma_dir"]
+        data_dir=project_paths["data_dir"], chroma_dir=project_paths["chroma_dir"]
     )
 
     logger.info("=" * 60)
@@ -124,11 +137,15 @@ def main():
     if args.reset:
         reset_success = engine.reset()
         if reset_success:
-            print("\nReset complete. Add new files to the data folder and run without --reset to re-index.")
+            print(
+                "\nReset complete. Add new files to the data folder and run without --reset to re-index."
+            )
         sys.exit(0 if reset_success else 1)
 
     if not engine.check_ollama():
-        logger.error("Ollama server is not running. Please start it with 'ollama serve'")
+        logger.error(
+            "Ollama server is not running. Please start it with 'ollama serve'"
+        )
         sys.exit(1)
 
     try:
@@ -148,13 +165,18 @@ def main():
             print("\nTo reset and start fresh with new documents:")
             print(f"  ./venv/bin/python custom-rag.py --reset --project {args.project}")
             print("\nTo ask questions interactively, run:")
-            print(f"  ./venv/bin/python custom-rag.py --interactive --project {args.project}")
+            print(
+                f"  ./venv/bin/python custom-rag.py --interactive --project {args.project}"
+            )
             print("\nTo force re-index (if you add new documents):")
-            print(f"  ./venv/bin/python custom-rag.py --reindex --project {args.project}")
+            print(
+                f"  ./venv/bin/python custom-rag.py --reindex --project {args.project}"
+            )
 
     except Exception as e:
         logger.error(f"System Error: {str(e)}")
         import traceback
+
         logger.error(f"Traceback: {traceback.format_exc()}")
         print(f"\nRAG system failed: {str(e)}")
         sys.exit(1)

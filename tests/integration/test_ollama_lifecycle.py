@@ -1,6 +1,7 @@
 import json
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from rag_engine import RAGEngine
 
@@ -8,11 +9,15 @@ from rag_engine import RAGEngine
 class TestOllamaCheckAndModelList:
     """Integration: check Ollama status → list models → select model."""
 
-    def test_check_ollama_then_list_models(self, tmp_data_dir, tmp_chroma_dir, ollama_models_response):
+    def test_check_ollama_then_list_models(
+        self, tmp_data_dir, tmp_chroma_dir, ollama_models_response
+    ):
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
 
         mock_tag_response = MagicMock()
-        mock_tag_response.read.return_value = json.dumps(ollama_models_response).encode()
+        mock_tag_response.read.return_value = json.dumps(
+            ollama_models_response
+        ).encode()
         mock_tag_response.__enter__ = lambda s: s
         mock_tag_response.__exit__ = MagicMock(return_value=False)
 
@@ -28,11 +33,15 @@ class TestOllamaCheckAndModelList:
         assert "llama3.1:8b" in models
         assert len(models) == 3
 
-    def test_select_model_from_listed_models(self, tmp_data_dir, tmp_chroma_dir, ollama_models_response):
+    def test_select_model_from_listed_models(
+        self, tmp_data_dir, tmp_chroma_dir, ollama_models_response
+    ):
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
 
         mock_tag_response = MagicMock()
-        mock_tag_response.read.return_value = json.dumps(ollama_models_response).encode()
+        mock_tag_response.read.return_value = json.dumps(
+            ollama_models_response
+        ).encode()
         mock_tag_response.__enter__ = lambda s: s
         mock_tag_response.__exit__ = MagicMock(return_value=False)
 

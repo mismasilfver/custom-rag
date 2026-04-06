@@ -2,8 +2,9 @@
 
 These tests verify the interaction between the app UI layer and RAGEngine.
 """
+
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -33,12 +34,16 @@ class TestAppOllamaStatusCheck:
 
         assert is_running is False
 
-    def test_app_populates_model_list_when_ollama_running(self, tmp_data_dir, tmp_chroma_dir, ollama_models_response):
+    def test_app_populates_model_list_when_ollama_running(
+        self, tmp_data_dir, tmp_chroma_dir, ollama_models_response
+    ):
         """When Ollama is running, app should populate model dropdown."""
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
 
         mock_tag_response = MagicMock()
-        mock_tag_response.read.return_value = json.dumps(ollama_models_response).encode()
+        mock_tag_response.read.return_value = json.dumps(
+            ollama_models_response
+        ).encode()
         mock_tag_response.__enter__ = lambda s: s
         mock_tag_response.__exit__ = MagicMock(return_value=False)
 
@@ -49,7 +54,9 @@ class TestAppOllamaStatusCheck:
         assert "llama3.1:8b" in models
         assert "mistral:7b" in models
 
-    def test_app_shows_empty_model_list_when_ollama_down(self, tmp_data_dir, tmp_chroma_dir):
+    def test_app_shows_empty_model_list_when_ollama_down(
+        self, tmp_data_dir, tmp_chroma_dir
+    ):
         """When Ollama is down, model list should be empty."""
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
 

@@ -1,7 +1,9 @@
-import streamlit as st
-from rag_engine import RAGEngine
-from project_manager import ProjectManager
 import logging
+
+import streamlit as st
+
+from project_manager import ProjectManager
+from rag_engine import RAGEngine
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +19,7 @@ st.title("📚 RAG Document Q&A")
 # Supported file types for the uploader
 SUPPORTED_TYPES = ["pdf", "doc", "docx", "txt"]
 
+
 # Initialize Project Manager and migrate legacy data if any
 @st.cache_resource
 def get_project_manager():
@@ -28,6 +31,7 @@ def get_project_manager():
         pm.create_project("default")
     return pm
 
+
 pm = get_project_manager()
 
 # Initialize session state variables
@@ -36,6 +40,7 @@ if "messages" not in st.session_state:
 if "current_project" not in st.session_state:
     projects = pm.list_projects()
     st.session_state.current_project = projects[0] if projects else "default"
+
 
 @st.cache_resource
 def get_engine(project_name):
@@ -46,33 +51,34 @@ def get_engine(project_name):
         return None
     return RAGEngine(data_dir=paths["data_dir"], chroma_dir=paths["chroma_dir"])
 
+
 def render_project_section():
     """Render the project selection and creation UI."""
     st.sidebar.header("📁 Projects")
-    
+
     projects = pm.list_projects()
-    
+
     # Project selector
     if not projects:
         st.sidebar.warning("No projects found.")
         return
-        
+
     # Ensure current project is valid
     if st.session_state.current_project not in projects:
         st.session_state.current_project = projects[0]
-        
+
     selected_project = st.sidebar.selectbox(
         "Select Project",
         projects,
-        index=projects.index(st.session_state.current_project)
+        index=projects.index(st.session_state.current_project),
     )
-    
+
     # Handle project switch
     if selected_project != st.session_state.current_project:
         st.session_state.current_project = selected_project
         st.session_state.messages = []  # Clear chat history on switch
         st.rerun()
-        
+
     # Create new project
     with st.sidebar.expander("➕ New Project"):
         new_project_name = st.text_input("Project Name", key="new_proj_name")
@@ -87,8 +93,9 @@ def render_project_section():
                     st.error("Invalid name or project already exists.")
             else:
                 st.warning("Please enter a name.")
-                
+
     st.sidebar.markdown("---")
+
 
 def render_chat_section(engine):
     """Render the chat interface with conversation history and source citations."""
@@ -103,7 +110,11 @@ def render_chat_section(engine):
             if "sources" in message and message["sources"]:
                 with st.expander("📚 Source references"):
                     for source in message["sources"]:
-                        page_info = f", Page {source['page_label']}" if source.get("page_label") else ""
+                        page_info = (
+                            f", Page {source['page_label']}"
+                            if source.get("page_label")
+                            else ""
+                        )
                         st.markdown(
                             f"**[{source['number']}] {source['file_name']}**{page_info}"
                         )
@@ -133,7 +144,11 @@ def render_chat_section(engine):
                     if sources:
                         with st.expander("📚 Source references"):
                             for source in sources:
-                                page_info = f", Page {source['page_label']}" if source.get("page_label") else ""
+                                page_info = (
+                                    f", Page {source['page_label']}"
+                                    if source.get("page_label")
+                                    else ""
+                                )
                                 st.markdown(
                                     f"**[{source['number']}] {source['file_name']}**{page_info}"
                                 )
@@ -141,19 +156,23 @@ def render_chat_section(engine):
                                 st.markdown("---")
 
                     # Store assistant response in history
-                    st.session_state.messages.append({
-                        "role": "assistant",
-                        "content": answer,
-                        "sources": sources,
-                    })
+                    st.session_state.messages.append(
+                        {
+                            "role": "assistant",
+                            "content": answer,
+                            "sources": sources,
+                        }
+                    )
                 except Exception as e:
                     error_msg = f"❌ Error: {str(e)}"
                     st.error(error_msg)
-                    st.session_state.messages.append({
-                        "role": "assistant",
-                        "content": error_msg,
-                        "sources": [],
-                    })
+                    st.session_state.messages.append(
+                        {
+                            "role": "assistant",
+                            "content": error_msg,
+                            "sources": [],
+                        }
+                    )
 
     # Clear chat button
     if st.session_state.messages:
@@ -255,6 +274,7 @@ def render_file_section(engine):
                 with col_confirm:
                     if st.button("✅ Yes", key=f"confirm_delete_{filename}"):
                         from pathlib import Path
+
                         Path(engine.data_dir, filename).unlink()
                         st.session_state.confirm_delete_file = None
                         st.rerun()
@@ -297,12 +317,12 @@ def render_file_section(engine):
 
 def main():
     render_project_section()
-    
+
     if st.session_state.current_project:
         engine = get_engine(st.session_state.current_project)
         if not engine:
             return
-            
+
         render_ollama_section(engine)
         st.sidebar.markdown("---")
         render_file_section(engine)
@@ -316,9 +336,12 @@ def main():
             engine.index()
             render_chat_section(engine)
         except Exception as e:
-            st.warning("📄 Add documents and click **Index** in the sidebar to get started.")
+            st.warning(
+                "📄 Add documents and click **Index** in the sidebar to get started."
+            )
     else:
         st.warning("Please create or select a project from the sidebar.")
+
 
 if __name__ == "__main__":
     main()

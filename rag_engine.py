@@ -28,13 +28,12 @@ def _clean_text_for_display(text, max_length=200):
     # Replace null bytes and other control characters
     # Keep only printable ASCII and common Unicode characters
     cleaned = "".join(
-        char if (ord(char) >= 32 or char in '\n\r\t') and ord(char) < 0x110000
-        else " "
+        char if (ord(char) >= 32 or char in "\n\r\t") and ord(char) < 0x110000 else " "
         for char in text
     )
 
     # Remove multiple consecutive whitespace
-    cleaned = re.sub(r'\s+', ' ', cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned)
 
     # Strip and truncate
     cleaned = cleaned.strip()
@@ -193,9 +192,14 @@ class RAGEngine:
 
     def _build_index(self, force=False):
         """Internal: build or load the vector index."""
-        from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings, StorageContext
-        from llama_index.vector_stores.chroma import ChromaVectorStore
         import chromadb
+        from llama_index.core import (
+            Settings,
+            SimpleDirectoryReader,
+            StorageContext,
+            VectorStoreIndex,
+        )
+        from llama_index.vector_stores.chroma import ChromaVectorStore
 
         embed_model = self._get_embed_model()
         llm = self._get_llm()
@@ -322,7 +326,7 @@ class RAGEngine:
 
         # Extract source information from response
         sources = []
-        if hasattr(response, 'source_nodes') and response.source_nodes:
+        if hasattr(response, "source_nodes") and response.source_nodes:
             for i, source_node in enumerate(response.source_nodes, 1):
                 node = source_node.node
                 metadata = node.metadata
@@ -336,7 +340,7 @@ class RAGEngine:
                     "file_name": metadata.get("file_name", "Unknown"),
                     "page_label": metadata.get("page_label"),
                     "snippet": snippet,
-                    "score": getattr(source_node, 'score', None),
+                    "score": getattr(source_node, "score", None),
                 }
                 sources.append(source)
 
@@ -359,11 +363,16 @@ class RAGEngine:
         if data_path.exists():
             deleted_count = 0
             for file_path in data_path.iterdir():
-                if file_path.is_file() and file_path.suffix.lower() in SUPPORTED_EXTENSIONS:
+                if (
+                    file_path.is_file()
+                    and file_path.suffix.lower() in SUPPORTED_EXTENSIONS
+                ):
                     logger.info(f"Deleting file: {file_path.name}")
                     file_path.unlink()
                     deleted_count += 1
-            logger.info(f"Deleted {deleted_count} document files from '{self.data_dir}'")
+            logger.info(
+                f"Deleted {deleted_count} document files from '{self.data_dir}'"
+            )
 
         self._index = None
         self._query_engine = None

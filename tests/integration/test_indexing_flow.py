@@ -1,6 +1,7 @@
-import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from rag_engine import RAGEngine
 
@@ -8,7 +9,9 @@ from rag_engine import RAGEngine
 class TestUploadAndIndexFlow:
     """Integration: upload files → index → verify ChromaDB collection exists."""
 
-    def test_upload_then_list_shows_uploaded_files(self, tmp_data_dir, tmp_chroma_dir, sample_txt_file, sample_pdf_file):
+    def test_upload_then_list_shows_uploaded_files(
+        self, tmp_data_dir, tmp_chroma_dir, sample_txt_file, sample_pdf_file
+    ):
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
 
         assert engine.list_data_files() == []
@@ -19,7 +22,9 @@ class TestUploadAndIndexFlow:
         assert "sample.txt" in files
         assert "sample.pdf" in files
 
-    def test_upload_rejects_bad_extensions_but_accepts_good_ones(self, tmp_data_dir, tmp_chroma_dir, tmp_path):
+    def test_upload_rejects_bad_extensions_but_accepts_good_ones(
+        self, tmp_data_dir, tmp_chroma_dir, tmp_path
+    ):
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
 
         good_file = tmp_path / "notes.txt"
@@ -36,7 +41,9 @@ class TestUploadAndIndexFlow:
 class TestResetFlow:
     """Integration: populate data + chroma → reset → verify both cleaned."""
 
-    def test_reset_clears_chroma_and_document_files(self, tmp_data_dir, tmp_chroma_dir, sample_txt_file):
+    def test_reset_clears_chroma_and_document_files(
+        self, tmp_data_dir, tmp_chroma_dir, sample_txt_file
+    ):
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
 
         # Upload a file
@@ -65,7 +72,9 @@ class TestResetFlow:
         remaining = engine.list_data_files()
         assert remaining == ["config.json"]
 
-    def test_reset_then_upload_fresh_files(self, tmp_data_dir, tmp_chroma_dir, tmp_path):
+    def test_reset_then_upload_fresh_files(
+        self, tmp_data_dir, tmp_chroma_dir, tmp_path
+    ):
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
 
         # First batch
