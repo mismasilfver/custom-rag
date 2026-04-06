@@ -34,6 +34,7 @@
 - One logical change per commit
 - Explain the reasoning behind changes, not just what changed
 - Never delete or modify tests without explicit direction
+- Use Conventional Commits style for commit messages
 
 ## Communication
 - Be direct and concise
