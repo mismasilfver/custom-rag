@@ -3,6 +3,7 @@ import logging
 import sys
 
 from rag_engine import RAGEngine
+from project_manager import ProjectManager
 
 logging.basicConfig(
     level=logging.INFO,
@@ -89,16 +90,35 @@ def run_test_queries(engine):
 
 
 def main():
+    # Run legacy migration on startup
+    pm = ProjectManager()
+    if pm.migrate_legacy_data(target_project_name="default"):
+        logger.info("Migrated legacy data to 'default' project.")
+
     parser = argparse.ArgumentParser(description="RAG System with ChromaDB persistence")
     parser.add_argument("--reset", action="store_true", help="Delete chroma_db and clear data folder documents")
     parser.add_argument("--reindex", action="store_true", help="Force re-creation of embeddings")
     parser.add_argument("--interactive", "-i", action="store_true", help="Run in interactive query mode")
+    parser.add_argument("--project", "-p", type=str, default="default", help="Project to use (creates it if it doesn't exist)")
     args = parser.parse_args()
 
-    engine = RAGEngine()
+    # Ensure project exists
+    if args.project not in pm.list_projects():
+        pm.create_project(args.project)
+        logger.info(f"Created new project: '{args.project}'")
+
+    project_paths = pm.get_project_paths(args.project)
+    if not project_paths:
+        logger.error(f"Failed to get paths for project '{args.project}'")
+        sys.exit(1)
+
+    engine = RAGEngine(
+        data_dir=project_paths["data_dir"],
+        chroma_dir=project_paths["chroma_dir"]
+    )
 
     logger.info("=" * 60)
-    logger.info("Starting RAG Pipeline")
+    logger.info(f"Starting RAG Pipeline (Project: {args.project})")
     logger.info("=" * 60)
 
     if args.reset:
@@ -126,11 +146,11 @@ def main():
         print("\nRAG system is working correctly!")
         if not args.interactive:
             print("\nTo reset and start fresh with new documents:")
-            print("  ./venv/bin/python custom-rag.py --reset")
+            print(f"  ./venv/bin/python custom-rag.py --reset --project {args.project}")
             print("\nTo ask questions interactively, run:")
-            print("  ./venv/bin/python custom-rag.py --interactive")
+            print(f"  ./venv/bin/python custom-rag.py --interactive --project {args.project}")
             print("\nTo force re-index (if you add new documents):")
-            print("  ./venv/bin/python custom-rag.py --reindex")
+            print(f"  ./venv/bin/python custom-rag.py --reindex --project {args.project}")
 
     except Exception as e:
         logger.error(f"System Error: {str(e)}")

@@ -1,5 +1,9 @@
 import streamlit as st
 from rag_engine import RAGEngine
+from project_manager import ProjectManager
+import logging
+
+logger = logging.getLogger(__name__)
 
 st.set_page_config(
     page_title="RAG UI",
@@ -13,16 +17,78 @@ st.title("📚 RAG Document Q&A")
 # Supported file types for the uploader
 SUPPORTED_TYPES = ["pdf", "doc", "docx", "txt"]
 
-# Initialize session state for chat history
+# Initialize Project Manager and migrate legacy data if any
+@st.cache_resource
+def get_project_manager():
+    pm = ProjectManager()
+    if pm.migrate_legacy_data():
+        logger.info("Migrated legacy data to 'default' project")
+    # Ensure at least 'default' project exists
+    if not pm.list_projects():
+        pm.create_project("default")
+    return pm
+
+pm = get_project_manager()
+
+# Initialize session state variables
 if "messages" not in st.session_state:
     st.session_state.messages = []
-
+if "current_project" not in st.session_state:
+    projects = pm.list_projects()
+    st.session_state.current_project = projects[0] if projects else "default"
 
 @st.cache_resource
-def get_engine():
-    """Get or create the RAGEngine instance (cached across reruns)."""
-    return RAGEngine()
+def get_engine(project_name):
+    """Get or create the RAGEngine instance for a specific project."""
+    paths = pm.get_project_paths(project_name)
+    if not paths:
+        st.error(f"Project '{project_name}' not found!")
+        return None
+    return RAGEngine(data_dir=paths["data_dir"], chroma_dir=paths["chroma_dir"])
 
+def render_project_section():
+    """Render the project selection and creation UI."""
+    st.sidebar.header("📁 Projects")
+    
+    projects = pm.list_projects()
+    
+    # Project selector
+    if not projects:
+        st.sidebar.warning("No projects found.")
+        return
+        
+    # Ensure current project is valid
+    if st.session_state.current_project not in projects:
+        st.session_state.current_project = projects[0]
+        
+    selected_project = st.sidebar.selectbox(
+        "Select Project",
+        projects,
+        index=projects.index(st.session_state.current_project)
+    )
+    
+    # Handle project switch
+    if selected_project != st.session_state.current_project:
+        st.session_state.current_project = selected_project
+        st.session_state.messages = []  # Clear chat history on switch
+        st.rerun()
+        
+    # Create new project
+    with st.sidebar.expander("➕ New Project"):
+        new_project_name = st.text_input("Project Name", key="new_proj_name")
+        if st.button("Create", key="create_proj_btn"):
+            if new_project_name:
+                if pm.create_project(new_project_name):
+                    st.success(f"Project '{new_project_name}' created!")
+                    st.session_state.current_project = new_project_name
+                    st.session_state.messages = []
+                    st.rerun()
+                else:
+                    st.error("Invalid name or project already exists.")
+            else:
+                st.warning("Please enter a name.")
+                
+    st.sidebar.markdown("---")
 
 def render_chat_section(engine):
     """Render the chat interface with conversation history and source citations."""
@@ -230,23 +296,29 @@ def render_file_section(engine):
 
 
 def main():
-    engine = get_engine()
+    render_project_section()
+    
+    if st.session_state.current_project:
+        engine = get_engine(st.session_state.current_project)
+        if not engine:
+            return
+            
+        render_ollama_section(engine)
+        st.sidebar.markdown("---")
+        render_file_section(engine)
 
-    render_ollama_section(engine)
-    st.sidebar.markdown("---")
-    render_file_section(engine)
+        if not engine.check_ollama():
+            st.error("🚫 Ollama is not running. Please start it from the sidebar.")
+            return
 
-    if not engine.check_ollama():
-        st.error("🚫 Ollama is not running. Please start it from the sidebar.")
-        return
-
-    # Check if documents are indexed
-    try:
-        engine.index()
-        render_chat_section(engine)
-    except Exception as e:
-        st.warning("📄 Add documents and click **Index** in the sidebar to get started.")
-
+        # Check if documents are indexed
+        try:
+            engine.index()
+            render_chat_section(engine)
+        except Exception as e:
+            st.warning("📄 Add documents and click **Index** in the sidebar to get started.")
+    else:
+        st.warning("Please create or select a project from the sidebar.")
 
 if __name__ == "__main__":
     main()
