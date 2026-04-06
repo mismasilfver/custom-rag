@@ -160,11 +160,18 @@ python custom-rag.py --interactive --reindex
 
 ```
 custom-rag/
-├── app.py                 # Streamlit web interface
-├── rag_engine.py          # Core RAGEngine class (lazy init, all RAG logic)
-├── custom-rag.py          # CLI wrapper around RAGEngine
-├── requirements.txt       # Python dependencies
-├── requirements-dev.txt   # Development dependencies (pytest, pytest-mock)
+├── app.py                  # Streamlit web interface
+├── custom-rag.py           # Command-line interface
+├── rag_engine.py           # Core RAG logic and Ollama integration
+├── project_manager.py      # Manages isolated project directories
+├── projects/               # Base directory for all projects
+│   ├── default/            # The default project
+│   │   ├── data/           # PDF/TXT files for this project
+│   │   └── chroma_db/      # Vector database for this project
+│   └── ...                 # Additional projects
+├── tests/                  # Pytest suite (unit & integration)
+├── start-rag.sh            # Setup & run script
+└── requirements.txt        # Python dependencies (pytest, pytest-mock)
 ├── .streamlit/
 │   └── config.toml        # Streamlit config (telemetry disabled)
 ├── tests/                 # Test suite
@@ -195,7 +202,7 @@ Potential improvements and experiments to explore:
 - **Retrieval tuning differences with similarity_top_k and response_mode**: Experiment with different `similarity_top_k` values (e.g., 3, 5, 10) and response modes (`compact`, `tree_summarize`, `accumulate`) to optimize answer quality
 - ✅ **Source citations in chat**: ~~Show which document chunks were used to generate each answer~~ **DONE** - Implemented `query_with_sources()` with Perplexity-style numbered references and expandable source panel
 - **Conversation memory**: Enable multi-turn context-aware conversations using chat history
-- **Multiple collection support**: Allow organizing documents into separate collections/projects
+- ✅ **Multiple collection support**: ~~Allow organizing documents into separate collections/projects~~ **DONE** - Implemented isolated `projects/` directories, each with its own data and ChromaDB folder
 - **Export chat history**: Save conversations to JSON or Markdown files
 
 Based on the tutorial by Aayush Mishra. Modifications and changes by the repository owner.
