@@ -223,5 +223,7 @@ Potential improvements and experiments to explore:
 - **Conversation memory**: Enable multi-turn context-aware conversations using chat history
 - ✅ **Multiple collection support**: ~~Allow organizing documents into separate collections/projects~~ **DONE** - Implemented isolated `projects/` directories, each with its own data and ChromaDB folder
 - **Export chat history**: Save conversations to JSON or Markdown files
+- **Create eval tests** for the RAG system to evaluate answer quality and citation accuracy between models, chunk sizes, and retrieval strategies
+- **Fix citation engine** to properly handle citations and sources, maybe experiment with custom citation engine instead of llmaindex built in
 
 Based on the tutorial by Aayush Mishra. Modifications and changes by the repository owner.
