@@ -183,7 +183,10 @@ class RAGEngine:
         return self._llm
 
     def index(self):
-        """Create index from documents in data directory. Skips if index already exists."""
+        """Create index from documents in data directory.
+
+        Skips if index already exists.
+        """
         return self._build_index(force=False)
 
     def reindex(self):
@@ -289,7 +292,8 @@ class RAGEngine:
 
         Returns a dict with:
         - answer: The LLM response string
-        - sources: List of source dicts with number, file_name, page_label, snippet, score
+        - sources: List of source dicts with number, file_name,
+          page_label, snippet, score
         """
         if self._index is None:
             self.index()

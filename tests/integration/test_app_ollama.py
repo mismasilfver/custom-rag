@@ -6,8 +6,6 @@ These tests verify the interaction between the app UI layer and RAGEngine.
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from rag_engine import RAGEngine
 
 

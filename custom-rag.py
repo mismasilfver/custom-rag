@@ -80,11 +80,11 @@ def run_test_queries(engine):
             if result["sources"]:
                 print(format_sources_for_display(result["sources"]))
 
-            print(f"Status: SUCCESS")
+            print("Status: SUCCESS")
         except Exception as e:
             logger.error(f"Query {i} failed: {e}")
             print(f"Error: {str(e)}")
-            print(f"Status: FAILED")
+            print("Status: FAILED")
 
         print("-" * 40)
 
@@ -138,7 +138,8 @@ def main():
         reset_success = engine.reset()
         if reset_success:
             print(
-                "\nReset complete. Add new files to the data folder and run without --reset to re-index."
+                "\nReset complete. Add new files to the data folder"
+                " and run without --reset to re-index."
             )
         sys.exit(0 if reset_success else 1)
 
@@ -163,10 +164,14 @@ def main():
         print("\nRAG system is working correctly!")
         if not args.interactive:
             print("\nTo reset and start fresh with new documents:")
-            print(f"  ./venv/bin/python custom-rag.py --reset --project {args.project}")
+            print(
+                f"  ./venv/bin/python custom-rag.py"
+                f" --reset --project {args.project}"
+            )
             print("\nTo ask questions interactively, run:")
             print(
-                f"  ./venv/bin/python custom-rag.py --interactive --project {args.project}"
+                f"  ./venv/bin/python custom-rag.py"
+                f" --interactive --project {args.project}"
             )
             print("\nTo force re-index (if you add new documents):")
             print(

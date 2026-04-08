@@ -5,8 +5,6 @@ Run with: ./venv/bin/python -m pytest tests/unit/test_rag_sources.py -v
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 
 class TestCleanTextForDisplay:
     """Tests for _clean_text_for_display helper function."""
@@ -146,7 +144,8 @@ class TestRAGEngineQueryWithSources:
 
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
 
-        # Create mock source node with binary/garbage content (simulating PDF extraction issues)
+        # Create mock source node with binary/garbage content
+        # (simulating PDF extraction issues)
         mock_node = MagicMock()
         mock_node.node.metadata = {"file_name": "problematic.pdf"}
         # Simulate content with null bytes and control characters

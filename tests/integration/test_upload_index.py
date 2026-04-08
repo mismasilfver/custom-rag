@@ -36,7 +36,10 @@ class TestUploadIndexFlow:
     def test_upload_file_then_index_creates_collection(
         self, tmp_data_dir, tmp_chroma_dir, sample_txt_file, mock_ollama_deps
     ):
-        """Upload a text file and index it; ChromaDB collection should exist with documents."""
+        """Upload a text file and index it;
+
+        ChromaDB collection should exist with documents.
+        """
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
 
         # Upload the file
@@ -53,7 +56,10 @@ class TestUploadIndexFlow:
     def test_upload_rejects_unsupported_extensions(
         self, tmp_data_dir, tmp_chroma_dir, tmp_path
     ):
-        """Upload should reject .exe, .sh, etc. and only accept supported document types."""
+        """Upload should reject .exe, .sh, etc.
+
+        Only accept supported document types.
+        """
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
 
         good_file = tmp_path / "valid.txt"

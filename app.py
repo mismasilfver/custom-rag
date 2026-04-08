@@ -149,9 +149,11 @@ def render_chat_section(engine):
                                     if source.get("page_label")
                                     else ""
                                 )
-                                st.markdown(
-                                    f"**[{source['number']}] {source['file_name']}**{page_info}"
+                                label = (
+                                    f"**[{source['number']}]"
+                                    f" {source['file_name']}**{page_info}"
                                 )
+                                st.markdown(label)
                                 st.caption(source["snippet"])
                                 st.markdown("---")
 
@@ -335,7 +337,7 @@ def main():
         try:
             engine.index()
             render_chat_section(engine)
-        except Exception as e:
+        except Exception:
             st.warning(
                 "📄 Add documents and click **Index** in the sidebar to get started."
             )

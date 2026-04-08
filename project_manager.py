@@ -102,7 +102,8 @@ class ProjectManager:
             project_name: Name of the project
 
         Returns:
-            dict: Containing 'data_dir' and 'chroma_dir' paths, or None if project invalid
+            dict: Containing 'data_dir' and 'chroma_dir' paths,
+            or None if project invalid
         """
         if project_name not in self.list_projects():
             return None
@@ -127,7 +128,8 @@ class ProjectManager:
             target_project_name: Name of the project to create for migration
 
         Returns:
-            bool: True if migration performed successfully, False if no legacy data found
+            bool: True if migration performed successfully,
+            False if no legacy data found
         """
         data_path = Path(legacy_data_dir)
         chroma_path = Path(legacy_chroma_dir)
