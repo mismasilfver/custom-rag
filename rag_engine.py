@@ -7,9 +7,9 @@ import time
 import urllib.request
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
+from constants import CITATION_PROMPT_TEMPLATE, SUPPORTED_EXTENSIONS
 
-SUPPORTED_EXTENSIONS = {".pdf", ".doc", ".docx", ".txt"}
+logger = logging.getLogger(__name__)
 
 
 def _clean_text_for_display(text, max_length=200):
@@ -255,21 +255,7 @@ class RAGEngine:
         """Create a prompt template that encourages citation generation."""
         from llama_index.core import PromptTemplate
 
-        qa_prompt_str = (
-            "Context information is below.\n"
-            "---------------------\n"
-            "{context_str}\n"
-            "---------------------\n"
-            "Given the context information and not prior knowledge, "
-            "answer the question. Please cite the sources of your information "
-            "using numbered references like [1], [2], etc. Place citations "
-            "immediately after the relevant information.\n"
-            "At the end of your response, include a 'References' section listing "
-            "each cited source with its number.\n\n"
-            "Question: {query_str}\n"
-            "Answer: "
-        )
-        return PromptTemplate(qa_prompt_str)
+        return PromptTemplate(CITATION_PROMPT_TEMPLATE)
 
     def query(self, question, similarity_top_k=3):
         """Query the index and return the response string."""
@@ -302,21 +288,7 @@ class RAGEngine:
             from llama_index.core import PromptTemplate
 
             # Create citation-aware prompt
-            qa_prompt_str = (
-                "Context information is below.\n"
-                "---------------------\n"
-                "{context_str}\n"
-                "---------------------\n"
-                "Given the context information and not prior knowledge, "
-                "answer the question. Please cite the sources of your information "
-                "using numbered references like [1], [2], etc. Place citations "
-                "immediately after the relevant information.\n"
-                "At the end of your response, include a 'References' section listing "
-                "each cited source with its number.\n\n"
-                "Question: {query_str}\n"
-                "Answer: "
-            )
-            qa_prompt = PromptTemplate(qa_prompt_str)
+            qa_prompt = PromptTemplate(CITATION_PROMPT_TEMPLATE)
 
             self._query_engine = self._index.as_query_engine(
                 llm=self._get_llm(),

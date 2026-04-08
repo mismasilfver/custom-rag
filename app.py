@@ -1,4 +1,5 @@
 import logging
+import tempfile
 
 import streamlit as st
 
@@ -240,10 +241,10 @@ def render_file_section(engine):
         file_paths = []
         for uploaded_file in uploaded_files:
             # Save to temp location and upload
-            temp_path = f"/tmp/{uploaded_file.name}"
-            with open(temp_path, "wb") as f:
-                f.write(uploaded_file.getvalue())
-            file_paths.append(temp_path)
+            suffix = f"_{uploaded_file.name}"
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                tmp.write(uploaded_file.getvalue())
+                file_paths.append(tmp.name)
 
         engine.upload_files(file_paths)
         st.sidebar.success(f"Uploaded {len(file_paths)} file(s)")
