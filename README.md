@@ -30,7 +30,7 @@ The following changes have been made to the original tutorial code:
 2. **Dependency Version Pinning**: Pinned all dependencies to compatible versions to avoid API conflicts (specifically resolved `llama-index-workflows` 2.x breaking changes). Now using latest llama-index 0.14.x with Python 3.14.
 3. **Interactive Query Mode**: Added CLI flag for interactive mode allowing users to ask questions in a loop
 4. **ChromaDB Persistence**: Implemented persistent storage of embeddings to `./chroma_db`, preventing regeneration on every run
-5. **CLI Arguments**: Added command-line flags for `--reindex` (force reindexing), `--interactive` (interactive mode), and `--reset` (reset data)
+5. **CLI Arguments**: Added command-line flags for `--reindex` (force reindexing), `--interactive` (interactive mode), `--reset` (reset data), `--project` (target specific project), and `--list` (show available projects)
 6. **Refactored Architecture**: Extracted core logic into `RAGEngine` class with lazy initialization - no side effects on import
 7. **Test Suite**: Comprehensive unit and integration tests (46 tests) using pytest
 8. **Streamlit Web UI**: Full-featured web interface (`app.py`) with sidebar for Ollama management, file upload, indexing controls, and chat interface
@@ -143,6 +143,25 @@ python custom-rag.py --reset
 
 After resetting, add your new documents to the `data/` folder and run normally to create a fresh vector database.
 
+### List Available Projects
+
+View all existing projects:
+
+```bash
+python custom-rag.py --list
+```
+
+### Target a Specific Project
+
+Run commands against a specific project (creates/ converts the folder if it doesn't exist):
+
+```bash
+python custom-rag.py --project myproject --reindex
+python custom-rag.py --project laugh --interactive
+```
+
+When converting an existing folder with document files, they are automatically moved to the `data/` subdirectory.
+
 ### Combined (Interactive with Reindex)
 
 ```bash
@@ -197,7 +216,7 @@ Potential improvements and experiments to explore:
 - ✅ **Create an interactive UI for the RAG**: ~~Build a web-based or desktop GUI interface to make the RAG system more accessible to non-technical users~~ **DONE** - Streamlit UI implemented with file management, indexing, and chat
 - Test the UI with different document types and sizes
 - Improve the UI with better error handling and user feedback
-- Fix bugs in the UI
+- **UI interface broken for single and multi file projects, test, debug and fix**
 - **Chunk size optimization experiments**: Test different chunk sizes and overlap settings to find optimal balance between context preservation and retrieval precision
 - **Retrieval tuning differences with similarity_top_k and response_mode**: Experiment with different `similarity_top_k` values (e.g., 3, 5, 10) and response modes (`compact`, `tree_summarize`, `accumulate`) to optimize answer quality
 - ✅ **Source citations in chat**: ~~Show which document chunks were used to generate each answer~~ **DONE** - Implemented `query_with_sources()` with Perplexity-style numbered references and expandable source panel
