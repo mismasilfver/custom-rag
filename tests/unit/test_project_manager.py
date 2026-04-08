@@ -51,6 +51,77 @@ class TestProjectManager:
         assert pm.create_project("existing_project") is True
         assert pm.create_project("existing_project") is False
 
+    def test_create_project_from_existing_folder(self, tmp_projects_dir):
+        """Test create_project converts existing folder to valid project."""
+        pm = ProjectManager(base_dir=tmp_projects_dir)
+
+        # Create a folder with some files (simulating user-created folder)
+        existing_folder = Path(tmp_projects_dir) / "existing_folder"
+        existing_folder.mkdir()
+        (existing_folder / "document.pdf").touch()
+
+        # Should convert the existing folder to a valid project
+        success = pm.create_project("existing_folder")
+        assert success is True
+
+        # Verify it's now a valid project
+        assert "existing_folder" in pm.list_projects()
+
+        # Verify the project structure
+        assert (existing_folder / "data").exists()
+        assert (existing_folder / "chroma_db").exists()
+
+        # Document files are moved to data/ folder
+        assert (existing_folder / "data" / "document.pdf").exists()
+        assert not (existing_folder / "document.pdf").exists()
+
+    def test_create_project_from_existing_folder_with_subdirs(self, tmp_projects_dir):
+        """Test converting folder that already has some subdirectories."""
+        pm = ProjectManager(base_dir=tmp_projects_dir)
+
+        # Create folder with files in a subdirectory
+        existing_folder = Path(tmp_projects_dir) / "partial_project"
+        existing_folder.mkdir()
+        (existing_folder / "random_subdir").mkdir()
+        (existing_folder / "random_subdir" / "file.txt").touch()
+
+        success = pm.create_project("partial_project")
+        assert success is True
+
+        # Verify project structure created alongside existing content
+        assert (existing_folder / "data").exists()
+        assert (existing_folder / "chroma_db").exists()
+        assert (existing_folder / "random_subdir" / "file.txt").exists()
+
+    def test_create_project_moves_document_files_to_data(self, tmp_projects_dir):
+        """Test that document files are moved to data/ when converting folder."""
+        pm = ProjectManager(base_dir=tmp_projects_dir)
+
+        # Create folder with document files at root
+        existing_folder = Path(tmp_projects_dir) / "docs_project"
+        existing_folder.mkdir()
+        (existing_folder / "report.pdf").touch()
+        (existing_folder / "notes.txt").touch()
+        (existing_folder / "unsupported.exe").touch()
+
+        success = pm.create_project("docs_project")
+        assert success is True
+
+        # Verify project structure
+        assert (existing_folder / "data").exists()
+        assert (existing_folder / "chroma_db").exists()
+
+        # Verify document files moved to data/
+        assert (existing_folder / "data" / "report.pdf").exists()
+        assert (existing_folder / "data" / "notes.txt").exists()
+
+        # Unsupported file should stay at root
+        assert (existing_folder / "unsupported.exe").exists()
+
+        # Document files should no longer be at root
+        assert not (existing_folder / "report.pdf").exists()
+        assert not (existing_folder / "notes.txt").exists()
+
     def test_list_projects(self, tmp_projects_dir):
         pm = ProjectManager(base_dir=tmp_projects_dir)
 

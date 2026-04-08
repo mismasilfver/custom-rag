@@ -114,7 +114,30 @@ def main():
         default="default",
         help="Project to use (creates it if it doesn't exist)",
     )
+    parser.add_argument(
+        "--list",
+        "-l",
+        action="store_true",
+        help="List all available projects and exit",
+    )
     args = parser.parse_args()
+
+    # Handle --list before any other operations
+    if args.list:
+        projects = pm.list_projects()
+        print("\nAvailable projects:")
+        print("-" * 40)
+        if projects:
+            for project in projects:
+                marker = " *" if project == "default" else ""
+                print(f"  - {project}{marker}")
+        else:
+            print("  (no projects found)")
+        print("-" * 40)
+        print("\nUse --project <name> to target a specific project")
+        example_project = projects[0] if projects else "myproject"
+        print(f"Example: python custom-rag.py --project {example_project} --reindex")
+        sys.exit(0)
 
     # Ensure project exists
     if args.project not in pm.list_projects():

@@ -4,6 +4,8 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+SUPPORTED_EXTENSIONS = {".pdf", ".doc", ".docx", ".txt"}
+
 
 class ProjectManager:
     """Manages separate RAG projects on the filesystem."""
@@ -21,14 +23,27 @@ class ProjectManager:
 
         return bool(re.match(r"^[\w-]+$", name))
 
+    def _is_valid_project(self, project_dir: Path) -> bool:
+        """Check if a directory is a valid project (has data and chroma_db subdirs)."""
+        return (
+            project_dir.exists()
+            and (project_dir / "data").exists()
+            and (project_dir / "chroma_db").exists()
+        )
+
     def create_project(self, project_name: str) -> bool:
         """Create a new project directory structure.
+
+        If a folder with the same name already exists but is not a valid project
+        (missing data/ or chroma_db/ subdirectories), it will be converted to a
+        valid project by creating the required subdirectories.
 
         Args:
             project_name: Name of the project to create
 
         Returns:
-            bool: True if created successfully, False if invalid name or already exists
+            bool: True if created/converted successfully,
+                  False if invalid name or already a valid project
         """
         if not self._is_valid_name(project_name):
             logger.warning(f"Invalid project name: '{project_name}'")
@@ -36,19 +51,40 @@ class ProjectManager:
 
         project_dir = self.base_dir / project_name
 
-        if project_dir.exists():
+        # If it's already a valid project, don't modify it
+        if self._is_valid_project(project_dir):
             logger.warning(f"Project '{project_name}' already exists.")
             return False
 
         try:
-            # Create main project dir
-            project_dir.mkdir()
+            # Create main project dir if it doesn't exist
+            if not project_dir.exists():
+                project_dir.mkdir()
+                logger.info(f"Created project directory '{project_name}'")
+            else:
+                logger.info(f"Converting existing folder '{project_name}' to project")
 
-            # Create subdirectories
-            (project_dir / "data").mkdir()
-            (project_dir / "chroma_db").mkdir()
+            # Create required subdirectories (only if they don't exist)
+            data_dir = project_dir / "data"
+            data_dir.mkdir(exist_ok=True)
+            (project_dir / "chroma_db").mkdir(exist_ok=True)
 
-            logger.info(f"Created project '{project_name}'")
+            # If converting existing folder, move document files to data/
+            if project_dir.exists() and (project_dir / "data").exists():
+                moved_count = 0
+                for file_path in project_dir.iterdir():
+                    if (
+                        file_path.is_file()
+                        and file_path.suffix.lower() in SUPPORTED_EXTENSIONS
+                    ):
+                        dest = data_dir / file_path.name
+                        shutil.move(str(file_path), str(dest))
+                        logger.info(f"Moved {file_path.name} to data/")
+                        moved_count += 1
+                if moved_count > 0:
+                    logger.info(f"Moved {moved_count} file(s) to data/ folder")
+
+            logger.info(f"Project '{project_name}' is ready")
             return True
         except Exception as e:
             logger.error(f"Failed to create project '{project_name}': {e}")
