@@ -1,8 +1,7 @@
 import json
-import pytest
-import shutil
-from pathlib import Path
 from unittest.mock import MagicMock
+
+import pytest
 
 
 @pytest.fixture
@@ -39,11 +38,13 @@ def sample_pdf_file(tmp_path):
 @pytest.fixture
 def mock_ollama_responses():
     """Factory for mock Ollama HTTP responses."""
+
     def _make_response(status_code=200, body=None):
         mock_response = MagicMock()
         mock_response.status = status_code
         mock_response.read.return_value = json.dumps(body or {}).encode()
         return mock_response
+
     return _make_response
 
 

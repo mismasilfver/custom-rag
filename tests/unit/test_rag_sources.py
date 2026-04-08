@@ -2,8 +2,8 @@
 Unit tests for the new query_with_sources functionality.
 Run with: ./venv/bin/python -m pytest tests/unit/test_rag_sources.py -v
 """
-import pytest
-from unittest.mock import patch, MagicMock
+
+from unittest.mock import MagicMock, patch
 
 
 class TestCleanTextForDisplay:
@@ -50,7 +50,9 @@ class TestCleanTextForDisplay:
 class TestRAGEngineQueryWithSources:
     """Tests for query_with_sources method."""
 
-    def test_query_with_sources_returns_dict_with_answer_and_sources(self, tmp_data_dir, tmp_chroma_dir):
+    def test_query_with_sources_returns_dict_with_answer_and_sources(
+        self, tmp_data_dir, tmp_chroma_dir
+    ):
         from rag_engine import RAGEngine
 
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
@@ -68,7 +70,7 @@ class TestRAGEngineQueryWithSources:
         engine._index = mock_index
 
         # Also need to mock _get_llm
-        with patch.object(engine, '_get_llm', return_value=MagicMock()):
+        with patch.object(engine, "_get_llm", return_value=MagicMock()):
             result = engine.query_with_sources("What is this?")
 
         assert isinstance(result, dict)
@@ -77,7 +79,9 @@ class TestRAGEngineQueryWithSources:
         assert result["answer"] == "Test answer"
         assert result["sources"] == []
 
-    def test_query_with_sources_extracts_source_metadata(self, tmp_data_dir, tmp_chroma_dir):
+    def test_query_with_sources_extracts_source_metadata(
+        self, tmp_data_dir, tmp_chroma_dir
+    ):
         from rag_engine import RAGEngine
 
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
@@ -111,7 +115,7 @@ class TestRAGEngineQueryWithSources:
         mock_index.as_query_engine.return_value = mock_query_engine
         engine._index = mock_index
 
-        with patch.object(engine, '_get_llm', return_value=MagicMock()):
+        with patch.object(engine, "_get_llm", return_value=MagicMock()):
             result = engine.query_with_sources("What is this?")
 
         assert len(result["sources"]) == 2
@@ -133,12 +137,15 @@ class TestRAGEngineQueryWithSources:
         # Should be truncated and cleaned: 200 X's + "..."
         assert source2["snippet"] == "X" * 200 + "..."
 
-    def test_query_with_sources_cleans_binary_content(self, tmp_data_dir, tmp_chroma_dir):
+    def test_query_with_sources_cleans_binary_content(
+        self, tmp_data_dir, tmp_chroma_dir
+    ):
         from rag_engine import RAGEngine
 
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
 
-        # Create mock source node with binary/garbage content (simulating PDF extraction issues)
+        # Create mock source node with binary/garbage content
+        # (simulating PDF extraction issues)
         mock_node = MagicMock()
         mock_node.node.metadata = {"file_name": "problematic.pdf"}
         # Simulate content with null bytes and control characters
@@ -156,7 +163,7 @@ class TestRAGEngineQueryWithSources:
         mock_index.as_query_engine.return_value = mock_query_engine
         engine._index = mock_index
 
-        with patch.object(engine, '_get_llm', return_value=MagicMock()):
+        with patch.object(engine, "_get_llm", return_value=MagicMock()):
             result = engine.query_with_sources("What?")
 
         assert len(result["sources"]) == 1
@@ -165,7 +172,9 @@ class TestRAGEngineQueryWithSources:
         assert "\x00" not in source["snippet"]
         assert "Readable text with garbage" in source["snippet"]
 
-    def test_query_with_sources_handles_missing_metadata(self, tmp_data_dir, tmp_chroma_dir):
+    def test_query_with_sources_handles_missing_metadata(
+        self, tmp_data_dir, tmp_chroma_dir
+    ):
         from rag_engine import RAGEngine
 
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
@@ -187,7 +196,7 @@ class TestRAGEngineQueryWithSources:
         mock_index.as_query_engine.return_value = mock_query_engine
         engine._index = mock_index
 
-        with patch.object(engine, '_get_llm', return_value=MagicMock()):
+        with patch.object(engine, "_get_llm", return_value=MagicMock()):
             result = engine.query_with_sources("What?")
 
         assert len(result["sources"]) == 1
@@ -196,7 +205,9 @@ class TestRAGEngineQueryWithSources:
         assert source["page_label"] is None
         assert source["score"] is None
 
-    def test_query_with_sources_handles_no_source_nodes(self, tmp_data_dir, tmp_chroma_dir):
+    def test_query_with_sources_handles_no_source_nodes(
+        self, tmp_data_dir, tmp_chroma_dir
+    ):
         from rag_engine import RAGEngine
 
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
@@ -213,7 +224,7 @@ class TestRAGEngineQueryWithSources:
         mock_index.as_query_engine.return_value = mock_query_engine
         engine._index = mock_index
 
-        with patch.object(engine, '_get_llm', return_value=MagicMock()):
+        with patch.object(engine, "_get_llm", return_value=MagicMock()):
             result = engine.query_with_sources("What?")
 
         assert result["answer"] == "Answer without sources"

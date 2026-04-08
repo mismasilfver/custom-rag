@@ -6,6 +6,7 @@ Notice, you're still stopped by ollama's internal guardrails when trying to quer
 
 ## Features
 
+- **Source Citations**: Perplexity-style numbered references showing which documents were used to generate each answer, with expandable source references panel
 - **Web-based UI**: Streamlit interface for document management, indexing, and chat
 - **Ollama Integration**: Start/stop Ollama server directly from the UI, with model selection
 - **File Management**: Upload documents via drag-and-drop, delete with confirmation dialogs
@@ -34,7 +35,8 @@ The following changes have been made to the original tutorial code:
 7. **Test Suite**: Comprehensive unit and integration tests (46 tests) using pytest
 8. **Streamlit Web UI**: Full-featured web interface (`app.py`) with sidebar for Ollama management, file upload, indexing controls, and chat interface
 9. **Privacy-First**: Telemetry disabled via `.streamlit/config.toml` - no usage stats sent to external servers
-10. **Safety Features**: Delete confirmation dialogs to prevent accidental data loss
+11. **Source Citations**: Added `query_with_sources()` method with Perplexity-style numbered references [1], [2], etc. LLM is prompted to cite sources, and UI displays expandable "Source references" panel with filename, page number (PDFs), and cleaned text snippets
+12. **Text Sanitization**: Added `_clean_text_for_display()` helper to remove binary/garbage characters from PDF content extraction, ensuring readable source snippets
 
 ## Dependencies
 
@@ -106,6 +108,7 @@ Features in the UI:
 - Delete documents with confirmation dialog
 - Index or reindex documents with visual feedback
 - Chat with your documents in a conversational interface
+- **View source citations**: Expand the "📚 Source references" panel to see which documents were used for each answer
 - Clear chat history anytime
 
 ### CLI Mode
@@ -157,17 +160,25 @@ python custom-rag.py --interactive --reindex
 
 ```
 custom-rag/
-├── app.py                 # Streamlit web interface
-├── rag_engine.py          # Core RAGEngine class (lazy init, all RAG logic)
-├── custom-rag.py          # CLI wrapper around RAGEngine
-├── requirements.txt       # Python dependencies
-├── requirements-dev.txt   # Development dependencies (pytest, pytest-mock)
+├── app.py                  # Streamlit web interface
+├── custom-rag.py           # Command-line interface
+├── rag_engine.py           # Core RAG logic and Ollama integration
+├── project_manager.py      # Manages isolated project directories
+├── projects/               # Base directory for all projects
+│   ├── default/            # The default project
+│   │   ├── data/           # PDF/TXT files for this project
+│   │   └── chroma_db/      # Vector database for this project
+│   └── ...                 # Additional projects
+├── tests/                  # Pytest suite (unit & integration)
+├── start-rag.sh            # Setup & run script
+└── requirements.txt        # Python dependencies (pytest, pytest-mock)
 ├── .streamlit/
 │   └── config.toml        # Streamlit config (telemetry disabled)
 ├── tests/                 # Test suite
 │   ├── conftest.py        # Pytest fixtures
 │   ├── unit/
-│   │   └── test_rag_engine.py
+│   │   ├── test_rag_engine.py      # Core RAGEngine tests (18 tests)
+│   │   └── test_rag_sources.py       # Source citations tests (10 tests)
 │   └── integration/
 │       ├── test_app_ollama.py
 │       ├── test_chat_flow.py
@@ -189,9 +200,9 @@ Potential improvements and experiments to explore:
 - Fix bugs in the UI
 - **Chunk size optimization experiments**: Test different chunk sizes and overlap settings to find optimal balance between context preservation and retrieval precision
 - **Retrieval tuning differences with similarity_top_k and response_mode**: Experiment with different `similarity_top_k` values (e.g., 3, 5, 10) and response modes (`compact`, `tree_summarize`, `accumulate`) to optimize answer quality
-- **Source citations in chat**: Show which document chunks were used to generate each answer
+- ✅ **Source citations in chat**: ~~Show which document chunks were used to generate each answer~~ **DONE** - Implemented `query_with_sources()` with Perplexity-style numbered references and expandable source panel
 - **Conversation memory**: Enable multi-turn context-aware conversations using chat history
-- **Multiple collection support**: Allow organizing documents into separate collections/projects
+- ✅ **Multiple collection support**: ~~Allow organizing documents into separate collections/projects~~ **DONE** - Implemented isolated `projects/` directories, each with its own data and ChromaDB folder
 - **Export chat history**: Save conversations to JSON or Markdown files
 
 Based on the tutorial by Aayush Mishra. Modifications and changes by the repository owner.

@@ -1,13 +1,13 @@
 import json
-import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import MagicMock, patch
 
 
 class TestRAGEngineCheckOllama:
     """Tests for checking Ollama server connectivity."""
 
-    def test_check_ollama_returns_true_when_server_is_reachable(self, tmp_data_dir, tmp_chroma_dir):
+    def test_check_ollama_returns_true_when_server_is_reachable(
+        self, tmp_data_dir, tmp_chroma_dir
+    ):
         from rag_engine import RAGEngine
 
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
@@ -16,7 +16,9 @@ class TestRAGEngineCheckOllama:
             mock_urlopen.return_value = MagicMock()
             assert engine.check_ollama() is True
 
-    def test_check_ollama_returns_false_when_server_is_unreachable(self, tmp_data_dir, tmp_chroma_dir):
+    def test_check_ollama_returns_false_when_server_is_unreachable(
+        self, tmp_data_dir, tmp_chroma_dir
+    ):
         from rag_engine import RAGEngine
 
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
@@ -46,7 +48,9 @@ class TestRAGEngineOllamaLifecycle:
             assert result is True
             mock_popen.assert_called_once()
 
-    def test_start_ollama_returns_true_if_already_running(self, tmp_data_dir, tmp_chroma_dir):
+    def test_start_ollama_returns_true_if_already_running(
+        self, tmp_data_dir, tmp_chroma_dir
+    ):
         from rag_engine import RAGEngine
 
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
@@ -67,7 +71,9 @@ class TestRAGEngineOllamaLifecycle:
 
         mock_process.terminate.assert_called_once()
 
-    def test_stop_ollama_does_nothing_when_no_process(self, tmp_data_dir, tmp_chroma_dir):
+    def test_stop_ollama_does_nothing_when_no_process(
+        self, tmp_data_dir, tmp_chroma_dir
+    ):
         from rag_engine import RAGEngine
 
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
@@ -79,7 +85,9 @@ class TestRAGEngineOllamaLifecycle:
 class TestRAGEngineListModels:
     """Tests for listing available Ollama models."""
 
-    def test_list_models_returns_model_names(self, tmp_data_dir, tmp_chroma_dir, ollama_models_response):
+    def test_list_models_returns_model_names(
+        self, tmp_data_dir, tmp_chroma_dir, ollama_models_response
+    ):
         from rag_engine import RAGEngine
 
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
@@ -94,7 +102,9 @@ class TestRAGEngineListModels:
 
         assert models == ["llama3.1:8b", "nomic-embed-text:latest", "mistral:7b"]
 
-    def test_list_models_returns_empty_list_when_ollama_unreachable(self, tmp_data_dir, tmp_chroma_dir):
+    def test_list_models_returns_empty_list_when_ollama_unreachable(
+        self, tmp_data_dir, tmp_chroma_dir
+    ):
         from rag_engine import RAGEngine
 
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
@@ -130,7 +140,9 @@ class TestRAGEngineSetModel:
 class TestRAGEngineFileManagement:
     """Tests for uploading and listing files in the data directory."""
 
-    def test_upload_files_copies_to_data_dir(self, tmp_data_dir, tmp_chroma_dir, sample_txt_file):
+    def test_upload_files_copies_to_data_dir(
+        self, tmp_data_dir, tmp_chroma_dir, sample_txt_file
+    ):
         from rag_engine import RAGEngine
 
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
@@ -140,7 +152,9 @@ class TestRAGEngineFileManagement:
         assert len(uploaded) == 1
         assert uploaded[0].name == "sample.txt"
 
-    def test_upload_files_rejects_unsupported_extension(self, tmp_data_dir, tmp_chroma_dir, tmp_path):
+    def test_upload_files_rejects_unsupported_extension(
+        self, tmp_data_dir, tmp_chroma_dir, tmp_path
+    ):
         from rag_engine import RAGEngine
 
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
@@ -151,7 +165,9 @@ class TestRAGEngineFileManagement:
 
         assert list(tmp_data_dir.iterdir()) == []
 
-    def test_upload_multiple_files(self, tmp_data_dir, tmp_chroma_dir, sample_txt_file, sample_pdf_file):
+    def test_upload_multiple_files(
+        self, tmp_data_dir, tmp_chroma_dir, sample_txt_file, sample_pdf_file
+    ):
         from rag_engine import RAGEngine
 
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
@@ -171,7 +187,9 @@ class TestRAGEngineFileManagement:
 
         assert sorted(files) == ["doc1.pdf", "doc2.txt"]
 
-    def test_list_data_files_returns_empty_when_no_files(self, tmp_data_dir, tmp_chroma_dir):
+    def test_list_data_files_returns_empty_when_no_files(
+        self, tmp_data_dir, tmp_chroma_dir
+    ):
         from rag_engine import RAGEngine
 
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
@@ -194,7 +212,9 @@ class TestRAGEngineReset:
 
         assert not tmp_chroma_dir.exists()
 
-    def test_reset_deletes_document_files_from_data_dir(self, tmp_data_dir, tmp_chroma_dir):
+    def test_reset_deletes_document_files_from_data_dir(
+        self, tmp_data_dir, tmp_chroma_dir
+    ):
         from rag_engine import RAGEngine
 
         (tmp_data_dir / "doc.pdf").write_bytes(b"fake")

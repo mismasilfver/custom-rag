@@ -56,10 +56,10 @@ dmypy.json
 # ChromaDB persistent storage (embeddings - can be regenerated)
 chroma_db/
 
-# Data folder - keep folder, ignore contents
-# The data folder structure should be in git, but not the actual files
-data/*
-!data/.gitkeep
+# Projects folder
+projects/*/data/*
+!projects/*/data/.gitkeep
+projects/*/chroma_db/
 
 # Logs
 *.log
