@@ -51,7 +51,7 @@ class TestQueryFlow:
             )
             engine._index.as_query_engine.return_value = mock_query_engine
 
-            engine.index()
+            engine.ensure_index()
             answer = engine.query("What is this document about?")
 
             assert answer == "This document is about a RAG system for testing."
@@ -89,7 +89,7 @@ class TestChatSessionState:
             ]
             engine._index.as_query_engine.return_value = mock_query_engine
 
-            engine.index()
+            engine.ensure_index()
 
             ans1 = engine.query("What are you?")
             assert "RAG system" in ans1
@@ -109,7 +109,7 @@ class TestChatSessionState:
             mock_query_engine.query.return_value = "Test response"
             engine._index.as_query_engine.return_value = mock_query_engine
 
-            engine.index()
+            engine.ensure_index()
 
             # First query builds the engine
             assert engine._query_engine is None
@@ -152,7 +152,7 @@ class TestErrorHandling:
             mock_query_engine.query.side_effect = Exception("Connection refused")
             engine._index.as_query_engine.return_value = mock_query_engine
 
-            engine.index()
+            engine.ensure_index()
 
             with pytest.raises(Exception, match="Connection refused"):
                 engine.query("Hello?")

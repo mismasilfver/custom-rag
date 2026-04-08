@@ -159,7 +159,7 @@ class RAGEngine:
 
     # ── Indexing ──────────────────────────────────────────────────────
 
-    def _get_embed_model(self):
+    def _initialize_embed_model(self):
         """Lazy-initialize the embedding model."""
         if self._embed_model is None:
             from llama_index.embeddings.ollama import OllamaEmbedding
@@ -170,7 +170,7 @@ class RAGEngine:
             )
         return self._embed_model
 
-    def _get_llm(self):
+    def _initialize_llm(self):
         """Lazy-initialize the LLM."""
         if self._llm is None:
             from llama_index.llms.ollama import Ollama
@@ -182,14 +182,14 @@ class RAGEngine:
             )
         return self._llm
 
-    def index(self):
+    def ensure_index(self):
         """Create index from documents in data directory.
 
-        Skips if index already exists.
+        Skips if index already exists (idempotent).
         """
         return self._build_index(force=False)
 
-    def reindex(self):
+    def rebuild_index(self):
         """Force re-creation of index from documents in data directory."""
         return self._build_index(force=True)
 
@@ -204,8 +204,8 @@ class RAGEngine:
         )
         from llama_index.vector_stores.chroma import ChromaVectorStore
 
-        embed_model = self._get_embed_model()
-        llm = self._get_llm()
+        embed_model = self._initialize_embed_model()
+        llm = self._initialize_llm()
         Settings.embed_model = embed_model
         Settings.llm = llm
 
@@ -257,17 +257,29 @@ class RAGEngine:
 
         return PromptTemplate(CITATION_PROMPT_TEMPLATE)
 
-    def query(self, question, similarity_top_k=3):
-        """Query the index and return the response string."""
+    def _ensure_index_and_query_engine(self, similarity_top_k=3, qa_prompt=None):
+        """Ensure index and query engine are initialized.
+
+        Args:
+            similarity_top_k: Number of similar documents to retrieve
+            qa_prompt: Optional PromptTemplate for custom query prompts
+        """
         if self._index is None:
-            self.index()
+            self.ensure_index()
 
         if self._query_engine is None:
-            self._query_engine = self._index.as_query_engine(
-                llm=self._get_llm(),
-                similarity_top_k=similarity_top_k,
-                response_mode="tree_summarize",
-            )
+            query_engine_kwargs = {
+                "llm": self._initialize_llm(),
+                "similarity_top_k": similarity_top_k,
+                "response_mode": "tree_summarize",
+            }
+            if qa_prompt is not None:
+                query_engine_kwargs["text_qa_template"] = qa_prompt
+            self._query_engine = self._index.as_query_engine(**query_engine_kwargs)
+
+    def query(self, question, similarity_top_k=3):
+        """Query the index and return the response string."""
+        self._ensure_index_and_query_engine(similarity_top_k=similarity_top_k)
 
         logger.info(f"Processing query: '{question}'")
         response = self._query_engine.query(question)
@@ -281,21 +293,14 @@ class RAGEngine:
         - sources: List of source dicts with number, file_name,
           page_label, snippet, score
         """
-        if self._index is None:
-            self.index()
+        from llama_index.core import PromptTemplate
 
-        if self._query_engine is None:
-            from llama_index.core import PromptTemplate
+        # Create citation-aware prompt
+        qa_prompt = PromptTemplate(CITATION_PROMPT_TEMPLATE)
 
-            # Create citation-aware prompt
-            qa_prompt = PromptTemplate(CITATION_PROMPT_TEMPLATE)
-
-            self._query_engine = self._index.as_query_engine(
-                llm=self._get_llm(),
-                similarity_top_k=similarity_top_k,
-                response_mode="tree_summarize",
-                text_qa_template=qa_prompt,
-            )
+        self._ensure_index_and_query_engine(
+            similarity_top_k=similarity_top_k, qa_prompt=qa_prompt
+        )
 
         logger.info(f"Processing query with sources: '{question}'")
         response = self._query_engine.query(question)

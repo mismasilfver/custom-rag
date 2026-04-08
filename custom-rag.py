@@ -175,9 +175,9 @@ def main():
     try:
         if args.reindex:
             logger.info("--reindex flag set: Will recreate embeddings")
-            engine.reindex()
+            engine.rebuild_index()
         else:
-            engine.index()
+            engine.ensure_index()
 
         if args.interactive:
             interactive_query_mode(engine)

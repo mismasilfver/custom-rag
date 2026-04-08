@@ -98,6 +98,23 @@ def render_project_section():
     st.sidebar.markdown("---")
 
 
+def render_source_references(sources):
+    """Render source references in an expander.
+
+    Args:
+        sources: List of source dicts with number, file_name, page_label, snippet
+    """
+    with st.expander("📚 Source references"):
+        for source in sources:
+            page_info = (
+                f", Page {source['page_label']}" if source.get("page_label") else ""
+            )
+            label = f"**[{source['number']}] {source['file_name']}**{page_info}"
+            st.markdown(label)
+            st.caption(source["snippet"])
+            st.markdown("---")
+
+
 def render_chat_section(engine):
     """Render the chat interface with conversation history and source citations."""
     st.markdown("---")
@@ -109,18 +126,7 @@ def render_chat_section(engine):
             st.markdown(message["content"])
             # Show source references in expandable section if available
             if "sources" in message and message["sources"]:
-                with st.expander("📚 Source references"):
-                    for source in message["sources"]:
-                        page_info = (
-                            f", Page {source['page_label']}"
-                            if source.get("page_label")
-                            else ""
-                        )
-                        st.markdown(
-                            f"**[{source['number']}] {source['file_name']}**{page_info}"
-                        )
-                        st.caption(source["snippet"])
-                        st.markdown("---")
+                render_source_references(message["sources"])
 
     # Chat input
     if prompt := st.chat_input("Ask a question about your documents..."):
@@ -143,20 +149,7 @@ def render_chat_section(engine):
 
                     # Display source references
                     if sources:
-                        with st.expander("📚 Source references"):
-                            for source in sources:
-                                page_info = (
-                                    f", Page {source['page_label']}"
-                                    if source.get("page_label")
-                                    else ""
-                                )
-                                label = (
-                                    f"**[{source['number']}]"
-                                    f" {source['file_name']}**{page_info}"
-                                )
-                                st.markdown(label)
-                                st.caption(source["snippet"])
-                                st.markdown("---")
+                        render_source_references(sources)
 
                     # Store assistant response in history
                     st.session_state.messages.append(
@@ -295,7 +288,7 @@ def render_file_section(engine):
         if st.button("🔍 Index", key="index_btn"):
             with st.spinner("Indexing documents..."):
                 try:
-                    engine.index()
+                    engine.ensure_index()
                     st.sidebar.success("Indexed!")
                 except Exception as e:
                     st.sidebar.error(f"Error: {e}")
@@ -304,7 +297,7 @@ def render_file_section(engine):
         if st.button("🔄 Reindex", key="reindex_btn"):
             with st.spinner("Reindexing documents..."):
                 try:
-                    engine.reindex()
+                    engine.rebuild_index()
                     st.sidebar.success("Reindexed!")
                 except Exception as e:
                     st.sidebar.error(f"Error: {e}")
@@ -336,7 +329,7 @@ def main():
 
         # Check if documents are indexed
         try:
-            engine.index()
+            engine.ensure_index()
             render_chat_section(engine)
         except Exception:
             st.warning(
