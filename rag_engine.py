@@ -7,9 +7,9 @@ import time
 import urllib.request
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
+from constants import CITATION_PROMPT_TEMPLATE, SUPPORTED_EXTENSIONS
 
-SUPPORTED_EXTENSIONS = {".pdf", ".doc", ".docx", ".txt"}
+logger = logging.getLogger(__name__)
 
 
 def _clean_text_for_display(text, max_length=200):
@@ -159,7 +159,7 @@ class RAGEngine:
 
     # ── Indexing ──────────────────────────────────────────────────────
 
-    def _get_embed_model(self):
+    def _initialize_embed_model(self):
         """Lazy-initialize the embedding model."""
         if self._embed_model is None:
             from llama_index.embeddings.ollama import OllamaEmbedding
@@ -170,7 +170,7 @@ class RAGEngine:
             )
         return self._embed_model
 
-    def _get_llm(self):
+    def _initialize_llm(self):
         """Lazy-initialize the LLM."""
         if self._llm is None:
             from llama_index.llms.ollama import Ollama
@@ -182,14 +182,14 @@ class RAGEngine:
             )
         return self._llm
 
-    def index(self):
+    def ensure_index(self):
         """Create index from documents in data directory.
 
-        Skips if index already exists.
+        Skips if index already exists (idempotent).
         """
         return self._build_index(force=False)
 
-    def reindex(self):
+    def rebuild_index(self):
         """Force re-creation of index from documents in data directory."""
         return self._build_index(force=True)
 
@@ -204,8 +204,8 @@ class RAGEngine:
         )
         from llama_index.vector_stores.chroma import ChromaVectorStore
 
-        embed_model = self._get_embed_model()
-        llm = self._get_llm()
+        embed_model = self._initialize_embed_model()
+        llm = self._initialize_llm()
         Settings.embed_model = embed_model
         Settings.llm = llm
 
@@ -255,33 +255,31 @@ class RAGEngine:
         """Create a prompt template that encourages citation generation."""
         from llama_index.core import PromptTemplate
 
-        qa_prompt_str = (
-            "Context information is below.\n"
-            "---------------------\n"
-            "{context_str}\n"
-            "---------------------\n"
-            "Given the context information and not prior knowledge, "
-            "answer the question. Please cite the sources of your information "
-            "using numbered references like [1], [2], etc. Place citations "
-            "immediately after the relevant information.\n"
-            "At the end of your response, include a 'References' section listing "
-            "each cited source with its number.\n\n"
-            "Question: {query_str}\n"
-            "Answer: "
-        )
-        return PromptTemplate(qa_prompt_str)
+        return PromptTemplate(CITATION_PROMPT_TEMPLATE)
+
+    def _ensure_index_and_query_engine(self, similarity_top_k=3, qa_prompt=None):
+        """Ensure index and query engine are initialized.
+
+        Args:
+            similarity_top_k: Number of similar documents to retrieve
+            qa_prompt: Optional PromptTemplate for custom query prompts
+        """
+        if self._index is None:
+            self.ensure_index()
+
+        if self._query_engine is None:
+            query_engine_kwargs = {
+                "llm": self._initialize_llm(),
+                "similarity_top_k": similarity_top_k,
+                "response_mode": "tree_summarize",
+            }
+            if qa_prompt is not None:
+                query_engine_kwargs["text_qa_template"] = qa_prompt
+            self._query_engine = self._index.as_query_engine(**query_engine_kwargs)
 
     def query(self, question, similarity_top_k=3):
         """Query the index and return the response string."""
-        if self._index is None:
-            self.index()
-
-        if self._query_engine is None:
-            self._query_engine = self._index.as_query_engine(
-                llm=self._get_llm(),
-                similarity_top_k=similarity_top_k,
-                response_mode="tree_summarize",
-            )
+        self._ensure_index_and_query_engine(similarity_top_k=similarity_top_k)
 
         logger.info(f"Processing query: '{question}'")
         response = self._query_engine.query(question)
@@ -295,35 +293,14 @@ class RAGEngine:
         - sources: List of source dicts with number, file_name,
           page_label, snippet, score
         """
-        if self._index is None:
-            self.index()
+        from llama_index.core import PromptTemplate
 
-        if self._query_engine is None:
-            from llama_index.core import PromptTemplate
+        # Create citation-aware prompt
+        qa_prompt = PromptTemplate(CITATION_PROMPT_TEMPLATE)
 
-            # Create citation-aware prompt
-            qa_prompt_str = (
-                "Context information is below.\n"
-                "---------------------\n"
-                "{context_str}\n"
-                "---------------------\n"
-                "Given the context information and not prior knowledge, "
-                "answer the question. Please cite the sources of your information "
-                "using numbered references like [1], [2], etc. Place citations "
-                "immediately after the relevant information.\n"
-                "At the end of your response, include a 'References' section listing "
-                "each cited source with its number.\n\n"
-                "Question: {query_str}\n"
-                "Answer: "
-            )
-            qa_prompt = PromptTemplate(qa_prompt_str)
-
-            self._query_engine = self._index.as_query_engine(
-                llm=self._get_llm(),
-                similarity_top_k=similarity_top_k,
-                response_mode="tree_summarize",
-                text_qa_template=qa_prompt,
-            )
+        self._ensure_index_and_query_engine(
+            similarity_top_k=similarity_top_k, qa_prompt=qa_prompt
+        )
 
         logger.info(f"Processing query with sources: '{question}'")
         response = self._query_engine.query(question)

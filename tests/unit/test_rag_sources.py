@@ -69,8 +69,8 @@ class TestRAGEngineQueryWithSources:
         mock_index.as_query_engine.return_value = mock_query_engine
         engine._index = mock_index
 
-        # Also need to mock _get_llm
-        with patch.object(engine, "_get_llm", return_value=MagicMock()):
+        # Also need to mock _initialize_llm
+        with patch.object(engine, "_initialize_llm", return_value=MagicMock()):
             result = engine.query_with_sources("What is this?")
 
         assert isinstance(result, dict)
@@ -115,7 +115,7 @@ class TestRAGEngineQueryWithSources:
         mock_index.as_query_engine.return_value = mock_query_engine
         engine._index = mock_index
 
-        with patch.object(engine, "_get_llm", return_value=MagicMock()):
+        with patch.object(engine, "_initialize_llm", return_value=MagicMock()):
             result = engine.query_with_sources("What is this?")
 
         assert len(result["sources"]) == 2
@@ -163,7 +163,7 @@ class TestRAGEngineQueryWithSources:
         mock_index.as_query_engine.return_value = mock_query_engine
         engine._index = mock_index
 
-        with patch.object(engine, "_get_llm", return_value=MagicMock()):
+        with patch.object(engine, "_initialize_llm", return_value=MagicMock()):
             result = engine.query_with_sources("What?")
 
         assert len(result["sources"]) == 1
@@ -196,7 +196,7 @@ class TestRAGEngineQueryWithSources:
         mock_index.as_query_engine.return_value = mock_query_engine
         engine._index = mock_index
 
-        with patch.object(engine, "_get_llm", return_value=MagicMock()):
+        with patch.object(engine, "_initialize_llm", return_value=MagicMock()):
             result = engine.query_with_sources("What?")
 
         assert len(result["sources"]) == 1
@@ -224,7 +224,7 @@ class TestRAGEngineQueryWithSources:
         mock_index.as_query_engine.return_value = mock_query_engine
         engine._index = mock_index
 
-        with patch.object(engine, "_get_llm", return_value=MagicMock()):
+        with patch.object(engine, "_initialize_llm", return_value=MagicMock()):
             result = engine.query_with_sources("What?")
 
         assert result["answer"] == "Answer without sources"

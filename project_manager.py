@@ -2,9 +2,9 @@ import logging
 import shutil
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
+from constants import SUPPORTED_EXTENSIONS
 
-SUPPORTED_EXTENSIONS = {".pdf", ".doc", ".docx", ".txt"}
+logger = logging.getLogger(__name__)
 
 
 class ProjectManager:

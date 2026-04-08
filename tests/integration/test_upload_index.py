@@ -47,10 +47,13 @@ class TestUploadIndexFlow:
         assert len(engine.list_data_files()) == 1
 
         # Index with mocked Ollama calls
-        with patch.object(engine, "_get_embed_model"), patch.object(engine, "_get_llm"):
+        with (
+            patch.object(engine, "_initialize_embed_model"),
+            patch.object(engine, "_initialize_llm"),
+        ):
             # Just test that the _build_index wrapper executes without real Ollama
             with patch.object(engine, "_build_index", return_value=True) as mock_build:
-                engine.index()
+                engine.ensure_index()
                 mock_build.assert_called_once_with(force=False)
 
     def test_upload_rejects_unsupported_extensions(
@@ -83,12 +86,12 @@ class TestUploadIndexFlow:
         engine.upload_files([str(sample_txt_file)])
 
         with patch.object(engine, "_build_index", return_value=True) as mock_build:
-            engine.index()
+            engine.ensure_index()
             mock_build.assert_called_once_with(force=False)
 
             mock_build.reset_mock()
 
-            engine.reindex()
+            engine.rebuild_index()
             mock_build.assert_called_once_with(force=True)
 
 
@@ -105,7 +108,7 @@ class TestResetIntegrationFlow:
         engine.upload_files([str(sample_txt_file)])
 
         with patch.object(engine, "_build_index", return_value=True):
-            engine.index()
+            engine.ensure_index()
 
             # Ensure chroma directory exists to test deletion
             import os

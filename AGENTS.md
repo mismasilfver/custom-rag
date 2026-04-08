@@ -28,6 +28,7 @@
 - Ensure all tests pass before committing changes
 - Add regression tests when fixing bugs
 - Aim for high test coverage on critical paths
+- Always use venv to run tests
 
 ## Commits & Changes
 - Make minimal, focused changes
@@ -77,7 +78,7 @@
 ## Architecture Patterns
 - **RAGEngine Class**: Central abstraction with lazy initialization - no side effects on import
 - **Lazy Loading**: Cache expensive resources (_index, _llm, _embed_model) until first access
-- **Separation of Concerns**: 
+- **Separation of Concerns**:
   - rag_engine.py = Core RAG logic
   - app.py = Streamlit web interface
   - custom-rag.py = CLI wrapper
