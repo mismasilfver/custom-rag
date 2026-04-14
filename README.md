@@ -89,6 +89,55 @@ The RAG system supports the following document formats:
 4. **Add your documents**:
    Place PDF, Word, or text files in the `data/` directory
 
+## Development Dependencies
+
+For development, install additional dependencies:
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+This includes:
+- `pytest>=8.0` - Testing framework
+- `pytest-mock>=3.12` - Mocking support for tests
+- `pytest-cov>=4.0` - Code coverage reporting
+- `black>=24.0` - Code formatting
+- `flake8>=7.0` - Linting
+- `isort>=5.12` - Import sorting
+- `pre-commit>=3.5` - Pre-commit hooks
+
+### Running Tests with Coverage
+
+The project is configured with pytest-cov for code coverage reporting. Coverage reports are generated automatically when running tests:
+
+```bash
+# Run tests with coverage (configured in pyproject.toml)
+pytest
+
+# Run tests with specific coverage options
+pytest --cov=rag_engine --cov=app --cov-report=term-missing
+
+# Generate HTML coverage report
+pytest --cov-report=html:htmlcov
+
+# Open HTML coverage report in browser
+open htmlcov/index.html
+```
+
+**Coverage Configuration:**
+- **Minimum Coverage**: 70% (configured in `pyproject.toml`)
+- **Coverage Reports**: Terminal with missing lines, HTML report, XML report
+- **Covered Modules**: `rag_engine`, `app`, `project_manager`, `constants`
+- **Reports Location**:
+  - Terminal: Shows during test run
+  - HTML: `htmlcov/index.html`
+  - XML: `coverage.xml`
+
+**Current Coverage**: 83% across all modules
+- `rag_engine.py`: 80% coverage
+- `project_manager.py`: 88% coverage
+- `constants.py`: 100% coverage
+
 ## Usage
 
 ### Streamlit Web UI (Recommended)

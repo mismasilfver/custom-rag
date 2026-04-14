@@ -204,16 +204,32 @@ class RAGEngine:
         )
         from llama_index.vector_stores.chroma import ChromaVectorStore
 
-        embed_model = self._initialize_embed_model()
-        llm = self._initialize_llm()
-        Settings.embed_model = embed_model
-        Settings.llm = llm
-
         chroma_client = chromadb.PersistentClient(path=self.chroma_dir)
         collection_name = "documents"
 
         existing_collections = chroma_client.list_collections()
         collection_exists = any(c.name == collection_name for c in existing_collections)
+
+        if not collection_exists or force:
+            data_path = Path(self.data_dir)
+            if not data_path.exists():
+                raise FileNotFoundError(f"Data directory '{self.data_dir}' not found.")
+            supported_files = [
+                f
+                for f in data_path.iterdir()
+                if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS
+            ]
+            if not supported_files:
+                raise ValueError(
+                    f"No supported documents found in '{self.data_dir}'. "
+                    "Add files and run with --reindex, or use --project to "
+                    "target a different project."
+                )
+
+        embed_model = self._initialize_embed_model()
+        llm = self._initialize_llm()
+        Settings.embed_model = embed_model
+        Settings.llm = llm
 
         if collection_exists and not force:
             logger.info(f"Loading existing ChromaDB collection '{collection_name}'")
@@ -227,15 +243,10 @@ class RAGEngine:
             )
             logger.info("Existing index loaded successfully")
         else:
-            data_path = Path(self.data_dir)
-            if not data_path.exists():
-                raise FileNotFoundError(f"Data directory '{self.data_dir}' not found.")
-
             logger.info("Loading documents and generating embeddings...")
             docs = SimpleDirectoryReader(self.data_dir).load_data()
             if not docs:
                 raise ValueError(f"No documents found in {self.data_dir}")
-
             collection = chroma_client.get_or_create_collection(collection_name)
             vector_store = ChromaVectorStore(chroma_collection=collection)
             storage_context = StorageContext.from_defaults(vector_store=vector_store)

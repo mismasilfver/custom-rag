@@ -25,3 +25,13 @@ known_first_party = ["rag_engine", "app", "custom_rag"]
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
+addopts = [
+    "--cov=rag_engine",
+    "--cov=app",
+    "--cov=project_manager",
+    "--cov=constants",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-report=xml",
+    "--cov-fail-under=70",
+]
