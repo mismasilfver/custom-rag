@@ -1,4 +1,6 @@
+import shutil
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -218,3 +220,84 @@ class TestProjectManager:
 
         assert success is False
         assert "default" not in pm.list_projects()
+
+    def test_create_project_returns_false_on_filesystem_error(self, tmp_projects_dir):
+        pm = ProjectManager(base_dir=tmp_projects_dir)
+
+        with patch("pathlib.Path.mkdir", side_effect=OSError("disk full")):
+            result = pm.create_project("new_project")
+
+        assert result is False
+
+    def test_list_projects_returns_empty_when_base_dir_removed(self, tmp_projects_dir):
+        pm = ProjectManager(base_dir=tmp_projects_dir)
+        pm.create_project("proj1")
+
+        shutil.rmtree(tmp_projects_dir)
+
+        assert pm.list_projects() == []
+
+    def test_delete_project_returns_false_on_filesystem_error(self, tmp_projects_dir):
+        pm = ProjectManager(base_dir=tmp_projects_dir)
+        pm.create_project("to_delete")
+
+        with patch("shutil.rmtree", side_effect=OSError("permission denied")):
+            result = pm.delete_project("to_delete")
+
+        assert result is False
+
+    def test_migrate_legacy_data_skips_gitkeep_file(self, tmp_path):
+        legacy_data = tmp_path / "data"
+        legacy_data.mkdir()
+        (legacy_data / ".gitkeep").touch()
+        (legacy_data / "real_doc.txt").write_text("content")
+
+        projects_dir = tmp_path / "projects"
+        pm = ProjectManager(base_dir=str(projects_dir))
+
+        success = pm.migrate_legacy_data(
+            legacy_data_dir=str(legacy_data),
+            legacy_chroma_dir="/does/not/exist/chroma",
+            target_project_name="default",
+        )
+
+        assert success is True
+        paths = pm.get_project_paths("default")
+        assert Path(paths["data_dir"], "real_doc.txt").exists()
+        assert not Path(paths["data_dir"], ".gitkeep").exists()
+
+    def test_migrate_legacy_data_returns_false_when_create_project_fails(
+        self, tmp_path
+    ):
+        legacy_data = tmp_path / "data"
+        legacy_data.mkdir()
+        (legacy_data / "doc.txt").write_text("content")
+
+        projects_dir = tmp_path / "projects"
+        pm = ProjectManager(base_dir=str(projects_dir))
+
+        with patch.object(pm, "create_project", return_value=False):
+            success = pm.migrate_legacy_data(
+                legacy_data_dir=str(legacy_data),
+                legacy_chroma_dir="/does/not/exist/chroma",
+                target_project_name="invalid name!",
+            )
+
+        assert success is False
+
+    def test_migrate_legacy_data_returns_false_on_move_error(self, tmp_path):
+        legacy_data = tmp_path / "data"
+        legacy_data.mkdir()
+        (legacy_data / "doc.txt").write_text("content")
+
+        projects_dir = tmp_path / "projects"
+        pm = ProjectManager(base_dir=str(projects_dir))
+
+        with patch("shutil.move", side_effect=OSError("move failed")):
+            success = pm.migrate_legacy_data(
+                legacy_data_dir=str(legacy_data),
+                legacy_chroma_dir="/does/not/exist/chroma",
+                target_project_name="default",
+            )
+
+        assert success is False
