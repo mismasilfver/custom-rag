@@ -198,6 +198,36 @@ class TestRAGEngineFileManagement:
         assert files == []
 
 
+class TestRAGEngineBuildIndexEmptyDataDir:
+    """Tests for _build_index when data directory has no files."""
+
+    def test_ensure_index_raises_with_helpful_message_when_data_dir_is_empty(
+        self, tmp_data_dir, tmp_chroma_dir
+    ):
+        from unittest.mock import MagicMock, patch
+
+        import pytest
+
+        from rag_engine import RAGEngine
+
+        engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
+
+        mock_chroma_client = MagicMock()
+        mock_chroma_client.list_collections.return_value = []
+
+        with patch("chromadb.PersistentClient", return_value=mock_chroma_client):
+            with patch(
+                "rag_engine.RAGEngine._initialize_embed_model",
+                return_value=MagicMock(),
+            ):
+                with patch(
+                    "rag_engine.RAGEngine._initialize_llm",
+                    return_value=MagicMock(),
+                ):
+                    with pytest.raises(ValueError, match="--project"):
+                        engine.ensure_index()
+
+
 class TestRAGEngineReset:
     """Tests for resetting chroma_db and data folder."""
 
