@@ -1,8 +1,10 @@
 import logging
 import tempfile
+from pathlib import Path
 
 import streamlit as st
 
+from constants import SUPPORTED_EXTENSIONS
 from project_manager import ProjectManager
 from rag_engine import RAGEngine, sources_contain_garbled
 
@@ -17,8 +19,10 @@ st.set_page_config(
 
 st.title("📚 RAG Document Q&A")
 
-# Supported file types for the uploader
-SUPPORTED_TYPES = ["pdf", "doc", "docx", "txt"]
+# Supported file types for the uploader (derived from constants, .md excluded)
+SUPPORTED_TYPES = [
+    ext.lstrip(".") for ext in sorted(SUPPORTED_EXTENSIONS) if ext != ".md"
+]
 
 
 # Initialize Project Manager and migrate legacy data if any
@@ -304,8 +308,6 @@ def render_file_section(engine):
                 col_confirm, col_cancel = st.sidebar.columns(2)
                 with col_confirm:
                     if st.button("✅ Yes", key=f"confirm_delete_{filename}"):
-                        from pathlib import Path
-
                         Path(engine.data_dir, filename).unlink()
                         st.session_state.confirm_delete_file = None
                         st.rerun()
