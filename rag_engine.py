@@ -7,6 +7,17 @@ import time
 import urllib.request
 from pathlib import Path
 
+import chromadb
+import pymupdf4llm
+from llama_index.core import (
+    Settings,
+    SimpleDirectoryReader,
+    StorageContext,
+    VectorStoreIndex,
+)
+from llama_index.readers.file import PyMuPDFReader
+from llama_index.vector_stores.chroma import ChromaVectorStore
+
 from constants import CITATION_PROMPT_TEMPLATE, SUPPORTED_EXTENSIONS
 
 logger = logging.getLogger(__name__)
@@ -43,6 +54,46 @@ def _clean_text_for_display(text, max_length=200):
     return cleaned
 
 
+def is_snippet_garbled(text, min_ascii_letter_ratio=0.7):
+    """Detect whether a text snippet appears garbled due to font encoding issues.
+
+    Uses the ratio of ASCII letters (a-z, A-Z) to total non-whitespace
+    characters as a readability signal. Clean prose is typically >70% ASCII
+    letters; font-encoded garbage drops well below that threshold.
+
+    Args:
+        text: The snippet string to evaluate.
+        min_ascii_letter_ratio: Minimum ratio of ASCII letters required to
+            consider the text readable. Default 0.7 (70%).
+
+    Returns:
+        True if the snippet appears garbled, False otherwise.
+    """
+    if not text:
+        return False
+
+    non_whitespace = [c for c in text if not c.isspace()]
+    if not non_whitespace:
+        return False
+
+    ascii_letters = sum(1 for c in non_whitespace if c.isascii() and c.isalpha())
+    ratio = ascii_letters / len(non_whitespace)
+    return ratio < min_ascii_letter_ratio
+
+
+def sources_contain_garbled(sources):
+    """Return True if any source snippet appears garbled.
+
+    Args:
+        sources: List of source dicts as returned by query_with_sources,
+            each optionally containing a 'snippet' key.
+
+    Returns:
+        True if at least one snippet is garbled, False otherwise.
+    """
+    return any(is_snippet_garbled(s.get("snippet", "")) for s in sources)
+
+
 class RAGEngine:
     """Core RAG engine with lazy initialization. No side effects on import."""
 
@@ -52,7 +103,7 @@ class RAGEngine:
         chroma_dir="./chroma_db",
         ollama_host="http://localhost:11434",
         # model_name="llama3.1:8b",
-        model_name="phi4",
+        model_name="phi4:latest",
         # embed_model_name="bge-m3:latest",
         embed_model_name="nomic-embed-text:latest",
     ):
@@ -193,27 +244,72 @@ class RAGEngine:
         """Force re-creation of index from documents in data directory."""
         return self._build_index(force=True)
 
+    def reindex_with_markdown(self):
+        """Convert PDFs in data_dir to Markdown and rebuild the index.
+
+        Uses pymupdf4llm to convert each PDF to Markdown, writes the results
+        to a temporary staging directory alongside any non-PDF supported files,
+        then rebuilds the index against that staging directory.
+
+        Returns:
+            True on success.
+        """
+        import tempfile
+
+        data_path = Path(self.data_dir)
+        original_data_dir = self.data_dir
+
+        with tempfile.TemporaryDirectory() as staging_dir:
+            staging_path = Path(staging_dir)
+
+            for f in data_path.iterdir():
+                if not f.is_file():
+                    continue
+                if f.suffix.lower() == ".pdf":
+                    md_text = pymupdf4llm.to_markdown(str(f))
+                    (staging_path / f"{f.stem}.md").write_text(
+                        md_text, encoding="utf-8"
+                    )
+                elif f.suffix.lower() in SUPPORTED_EXTENSIONS:
+                    shutil.copy2(str(f), str(staging_path / f.name))
+
+            self.data_dir = staging_dir
+            try:
+                self.rebuild_index()
+            finally:
+                self.data_dir = original_data_dir
+
+        return True
+
     def _build_index(self, force=False):
         """Internal: build or load the vector index."""
-        import chromadb
-        from llama_index.core import (
-            Settings,
-            SimpleDirectoryReader,
-            StorageContext,
-            VectorStoreIndex,
-        )
-        from llama_index.vector_stores.chroma import ChromaVectorStore
-
-        embed_model = self._initialize_embed_model()
-        llm = self._initialize_llm()
-        Settings.embed_model = embed_model
-        Settings.llm = llm
 
         chroma_client = chromadb.PersistentClient(path=self.chroma_dir)
         collection_name = "documents"
 
         existing_collections = chroma_client.list_collections()
         collection_exists = any(c.name == collection_name for c in existing_collections)
+
+        if not collection_exists or force:
+            data_path = Path(self.data_dir)
+            if not data_path.exists():
+                raise FileNotFoundError(f"Data directory '{self.data_dir}' not found.")
+            supported_files = [
+                f
+                for f in data_path.iterdir()
+                if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS
+            ]
+            if not supported_files:
+                raise ValueError(
+                    f"No supported documents found in '{self.data_dir}'. "
+                    "Add files and run with --reindex, or use --project to "
+                    "target a different project."
+                )
+
+        embed_model = self._initialize_embed_model()
+        llm = self._initialize_llm()
+        Settings.embed_model = embed_model
+        Settings.llm = llm
 
         if collection_exists and not force:
             logger.info(f"Loading existing ChromaDB collection '{collection_name}'")
@@ -227,15 +323,13 @@ class RAGEngine:
             )
             logger.info("Existing index loaded successfully")
         else:
-            data_path = Path(self.data_dir)
-            if not data_path.exists():
-                raise FileNotFoundError(f"Data directory '{self.data_dir}' not found.")
-
             logger.info("Loading documents and generating embeddings...")
-            docs = SimpleDirectoryReader(self.data_dir).load_data()
+            docs = SimpleDirectoryReader(
+                self.data_dir,
+                file_extractor={".pdf": PyMuPDFReader()},
+            ).load_data()
             if not docs:
                 raise ValueError(f"No documents found in {self.data_dir}")
-
             collection = chroma_client.get_or_create_collection(collection_name)
             vector_store = ChromaVectorStore(chroma_collection=collection)
             storage_context = StorageContext.from_defaults(vector_store=vector_store)

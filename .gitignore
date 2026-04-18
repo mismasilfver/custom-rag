@@ -44,6 +44,7 @@ venv.bak/
 # Testing
 .pytest_cache/
 .coverage
+coverage.xml
 htmlcov/
 .tox/
 .nox/
@@ -56,10 +57,8 @@ dmypy.json
 # ChromaDB persistent storage (embeddings - can be regenerated)
 chroma_db/
 
-# Projects folder
-projects/*/data/*
-!projects/*/data/.gitkeep
-projects/*/chroma_db/
+# Projects folder (all contents ignored)
+projects/
 
 # Logs
 *.log

@@ -1,6 +1,7 @@
 -r requirements.txt
 pytest>=8.0
 pytest-mock>=3.12
+pytest-cov>=4.0
 
 # Linting tools
 black>=24.0

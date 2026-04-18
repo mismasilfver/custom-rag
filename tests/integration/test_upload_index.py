@@ -146,18 +146,18 @@ class TestResetIntegrationFlow:
         assert files == ["second.txt"]
 
     def test_reset_preserves_non_document_files(self, tmp_data_dir, tmp_chroma_dir):
-        """Reset should only delete .pdf, .doc, .docx, .txt files."""
+        """Reset should only delete supported document types (.pdf, .doc, .docx, .txt, .md)."""  # noqa: E501
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
 
         # Create various files
         (Path(tmp_data_dir) / "notes.txt").write_text("a document")
-        (Path(tmp_data_dir) / "config.json").write_text('{"key": "value"}')
         (Path(tmp_data_dir) / "README.md").write_text("# Readme")
+        (Path(tmp_data_dir) / "config.json").write_text('{"key": "value"}')
 
         engine.reset()
 
         remaining = engine.list_data_files()
-        # Only document files should be deleted; others remain
+        # Supported document types are deleted; non-document files remain
         assert "notes.txt" not in remaining
+        assert "README.md" not in remaining
         assert "config.json" in remaining
-        assert "README.md" in remaining
