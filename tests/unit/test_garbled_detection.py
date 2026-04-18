@@ -1,5 +1,5 @@
 """
-Unit tests for is_snippet_garbled heuristic.
+Unit tests for is_snippet_garbled and sources_contain_garbled heuristics.
 
 Run with: ./venv/bin/python -m pytest tests/unit/test_garbled_detection.py -v
 """
@@ -51,3 +51,48 @@ class TestIsSnippetGarbled:
 
         text = "\u1234\u5678\u9abc\u1234\u5678"
         assert is_snippet_garbled(text) is True
+
+
+class TestSourcesContainGarbled:
+    """Tests for the sources_contain_garbled helper."""
+
+    def test_returns_false_for_empty_sources(self):
+        from rag_engine import sources_contain_garbled
+
+        assert sources_contain_garbled([]) is False
+
+    def test_returns_false_when_all_snippets_are_clean(self):
+        from rag_engine import sources_contain_garbled
+
+        sources = [
+            {"number": 1, "snippet": "This is clean readable text."},
+            {"number": 2, "snippet": "Another readable sentence here."},
+        ]
+        assert sources_contain_garbled(sources) is False
+
+    def test_returns_true_when_any_snippet_is_garbled(self):
+        from rag_engine import sources_contain_garbled
+
+        sources = [
+            {"number": 1, "snippet": "This is clean readable text."},
+            {
+                "number": 2,
+                "snippet": "!4\u0194 SD J4!b !EH)r )r0E N DHH 9HCH)EL",
+            },
+        ]
+        assert sources_contain_garbled(sources) is True
+
+    def test_returns_true_when_all_snippets_are_garbled(self):
+        from rag_engine import sources_contain_garbled
+
+        sources = [
+            {"number": 1, "snippet": "!4\u0194 SD J4!b !EH)r )r0E"},
+            {"number": 2, "snippet": "Z^r O{UpKf3{~\u04ca ,J\u0159eXOD"},
+        ]
+        assert sources_contain_garbled(sources) is True
+
+    def test_handles_missing_snippet_key(self):
+        from rag_engine import sources_contain_garbled
+
+        sources = [{"number": 1}]
+        assert sources_contain_garbled(sources) is False

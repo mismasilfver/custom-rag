@@ -3,7 +3,7 @@ import logging
 import sys
 
 from project_manager import ProjectManager
-from rag_engine import RAGEngine
+from rag_engine import RAGEngine, sources_contain_garbled
 
 logging.basicConfig(
     level=logging.INFO,
@@ -51,6 +51,8 @@ def interactive_query_mode(engine):
 
             if result["sources"]:
                 print(format_sources_for_display(result["sources"]))
+                if sources_contain_garbled(result["sources"]):
+                    _prompt_markdown_reindex(engine)
 
         except KeyboardInterrupt:
             print("\nGoodbye!")
@@ -58,6 +60,26 @@ def interactive_query_mode(engine):
         except Exception as e:
             logger.error(f"Error processing query: {e}")
             print(f"Error: {str(e)}")
+
+
+def _prompt_markdown_reindex(engine):
+    """Ask the user if they want to re-index using Markdown conversion."""
+    print("\n⚠️  Some source snippets appear garbled (font encoding issue).")
+    try:
+        answer = (
+            input(
+                "Would you like to re-index using PDF→Markdown conversion"
+                " for better results? [y/N] "
+            )
+            .strip()
+            .lower()
+        )
+    except (EOFError, KeyboardInterrupt):
+        return
+    if answer == "y":
+        print("Re-indexing with Markdown conversion...")
+        engine.reindex_with_markdown()
+        print("Re-indexing complete. Please run your query again.")
 
 
 def run_test_queries(engine):
