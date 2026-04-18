@@ -15,13 +15,17 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 PROJECTS_BASE = "projects"
-PROJECTS = ["project-a", "project-b", "project-c", "project-d"]
 
 
 def main():
     pm = ProjectManager(base_dir=PROJECTS_BASE)
+    projects = pm.list_projects()
 
-    for project_name in PROJECTS:
+    if not projects:
+        logger.info("No projects found in '%s'. Nothing to do.", PROJECTS_BASE)
+        return
+
+    for project_name in projects:
         logger.info(f"=== Processing project: {project_name} ===")
 
         converted = pm.create_project(project_name)
