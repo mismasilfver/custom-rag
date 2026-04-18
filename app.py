@@ -86,13 +86,22 @@ def render_project_section():
 
     # Create new project
     with st.sidebar.expander("➕ New Project"):
-        new_project_name = st.text_input("Project Name", key="new_proj_name")
+        # Use a counter to force widget reset after creation
+        if "new_proj_key" not in st.session_state:
+            st.session_state.new_proj_key = 0
+
+        new_project_name = st.text_input(
+            "Project Name",
+            key=f"new_proj_name_{st.session_state.new_proj_key}",
+        )
         if st.button("Create", key="create_proj_btn"):
             if new_project_name:
                 if pm.create_project(new_project_name):
                     st.success(f"Project '{new_project_name}' created!")
                     st.session_state.current_project = new_project_name
                     st.session_state.messages = []
+                    # Increment key to force new widget instance (clears field)
+                    st.session_state.new_proj_key += 1
                     st.rerun()
                 else:
                     st.error("Invalid name or project already exists.")
@@ -219,11 +228,11 @@ def render_ollama_section(engine):
 
     with col2:
         if is_running:
-            if st.button("⏹️ Stop", key="stop_ollama"):
+            if st.button("⏹️", key="stop_ollama"):
                 engine.stop_ollama()
                 st.rerun()
         else:
-            if st.button("▶️ Start", key="start_ollama"):
+            if st.button("▶️", key="start_ollama"):
                 with st.spinner("Starting Ollama..."):
                     success = engine.start_ollama()
                 if success:
@@ -270,17 +279,17 @@ def render_file_section(engine):
     )
 
     if uploaded_files:
-        file_paths = []
+        file_info = []
         for uploaded_file in uploaded_files:
             # Save to temp location and upload
             suffix = f"_{uploaded_file.name}"
             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
                 tmp.write(uploaded_file.getvalue())
-                file_paths.append(tmp.name)
+                # Pass tuple of (temp_path, original_filename)
+                file_info.append((tmp.name, uploaded_file.name))
 
-        engine.upload_files(file_paths)
-        st.sidebar.success(f"Uploaded {len(file_paths)} file(s)")
-        st.rerun()
+        engine.upload_files(file_info)
+        st.sidebar.success(f"Uploaded {len(file_info)} file(s)")
 
     # List current files with remove buttons (filter out hidden files like .gitkeep)
     st.sidebar.markdown("**Current files:**")
@@ -320,28 +329,17 @@ def render_file_section(engine):
     st.sidebar.markdown("---")
     st.sidebar.markdown("**Indexing:**")
 
-    col1, col2 = st.sidebar.columns(2)
-    with col1:
-        if st.button("🔍 Index", key="index_btn"):
-            with st.spinner("Indexing documents..."):
-                try:
-                    engine.ensure_index()
-                    st.sidebar.success("Indexed!")
-                except Exception as e:
-                    st.sidebar.error(f"Error: {e}")
+    if st.sidebar.button("🔄 Reindex", key="reindex_btn"):
+        with st.spinner("Reindexing documents..."):
+            try:
+                engine.rebuild_index()
+                st.sidebar.success("Reindexed!")
+            except Exception as e:
+                st.sidebar.error(f"Error: {e}")
 
-    with col2:
-        if st.button("🔄 Reindex", key="reindex_btn"):
-            with st.spinner("Reindexing documents..."):
-                try:
-                    engine.rebuild_index()
-                    st.sidebar.success("Reindexed!")
-                except Exception as e:
-                    st.sidebar.error(f"Error: {e}")
-
-    if st.button("⚠️ Reset Everything", key="reset_btn"):
+    if st.sidebar.button("⚠️ Reset Everything", key="reset_btn"):
         st.sidebar.warning("This will delete all documents and index. Are you sure?")
-        if st.button("Yes, reset everything", key="confirm_reset"):
+        if st.sidebar.button("Yes, reset everything", key="confirm_reset"):
             with st.spinner("Resetting..."):
                 engine.reset()
             st.sidebar.success("Reset complete!")

@@ -191,19 +191,32 @@ class RAGEngine:
 
     # ── File management ───────────────────────────────────────────────
 
-    def upload_files(self, file_paths):
-        """Copy files with supported extensions into the data directory."""
+    def upload_files(self, file_info):
+        """Copy files with supported extensions into the data directory.
+
+        Args:
+            file_info: List of tuples (temp_file_path, original_filename) or
+                      list of file paths (backward compatibility)
+        """
         data_path = Path(self.data_dir)
         data_path.mkdir(parents=True, exist_ok=True)
 
-        for file_path in file_paths:
+        for item in file_info:
+            # Handle both tuple format and legacy path-only format
+            if isinstance(item, tuple):
+                file_path, original_name = item
+            else:
+                file_path = item
+                original_name = Path(item).name
+
             src = Path(file_path)
             if src.suffix.lower() not in SUPPORTED_EXTENSIONS:
-                logger.warning(f"Skipping unsupported file type: {src.name}")
+                logger.warning(f"Skipping unsupported file type: {original_name}")
                 continue
-            dest = data_path / src.name
+
+            dest = data_path / original_name
             shutil.copy2(str(src), str(dest))
-            logger.info(f"Uploaded: {src.name}")
+            logger.info(f"Uploaded: {original_name}")
 
     def list_data_files(self):
         """Return list of file names in the data directory."""
