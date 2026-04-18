@@ -5,11 +5,11 @@ import sys
 from project_manager import ProjectManager
 from rag_engine import RAGEngine, sources_contain_garbled
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
+_handler = logging.StreamHandler(sys.stdout)
+_handler.setFormatter(logging.Formatter("%(message)s"))
+logging.root.setLevel(logging.INFO)
+logging.root.handlers = [_handler]
+logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
