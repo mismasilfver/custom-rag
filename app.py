@@ -206,10 +206,19 @@ def render_ollama_section(engine):
         models = engine.list_models()
         if models:
             current_model = engine.model_name
+            current_index = (
+                models.index(current_model) if current_model in models else None
+            )
+            if current_index is None:
+                st.sidebar.warning(
+                    f"Configured model **{current_model}** not found in Ollama. "
+                    "Select a model below."
+                )
+                current_index = 0
             selected = st.sidebar.selectbox(
                 "**Model:**",
                 models,
-                index=models.index(current_model) if current_model in models else 0,
+                index=current_index,
             )
             if selected != current_model:
                 engine.set_model(selected)
