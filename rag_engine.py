@@ -8,6 +8,7 @@ import urllib.request
 from pathlib import Path
 
 import chromadb
+import pymupdf4llm
 from llama_index.core import (
     Settings,
     SimpleDirectoryReader,
@@ -229,6 +230,43 @@ class RAGEngine:
     def rebuild_index(self):
         """Force re-creation of index from documents in data directory."""
         return self._build_index(force=True)
+
+    def reindex_with_markdown(self):
+        """Convert PDFs in data_dir to Markdown and rebuild the index.
+
+        Uses pymupdf4llm to convert each PDF to Markdown, writes the results
+        to a temporary staging directory alongside any non-PDF supported files,
+        then rebuilds the index against that staging directory.
+
+        Returns:
+            True on success.
+        """
+        import tempfile
+
+        data_path = Path(self.data_dir)
+        original_data_dir = self.data_dir
+
+        with tempfile.TemporaryDirectory() as staging_dir:
+            staging_path = Path(staging_dir)
+
+            for f in data_path.iterdir():
+                if not f.is_file():
+                    continue
+                if f.suffix.lower() == ".pdf":
+                    md_text = pymupdf4llm.to_markdown(str(f))
+                    (staging_path / f"{f.stem}.md").write_text(
+                        md_text, encoding="utf-8"
+                    )
+                elif f.suffix.lower() in SUPPORTED_EXTENSIONS:
+                    shutil.copy2(str(f), str(staging_path / f.name))
+
+            self.data_dir = staging_dir
+            try:
+                self.rebuild_index()
+            finally:
+                self.data_dir = original_data_dir
+
+        return True
 
     def _build_index(self, force=False):
         """Internal: build or load the vector index."""
