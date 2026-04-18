@@ -32,7 +32,7 @@ The following changes have been made to the original tutorial code:
 4. **ChromaDB Persistence**: Implemented persistent storage of embeddings to `./chroma_db`, preventing regeneration on every run
 5. **CLI Arguments**: Added command-line flags for `--reindex` (force reindexing), `--interactive` (interactive mode), `--reset` (reset data), `--project` (target specific project), and `--list` (show available projects)
 6. **Refactored Architecture**: Extracted core logic into `RAGEngine` class with lazy initialization - no side effects on import
-7. **Test Suite**: Comprehensive unit and integration tests (46 tests) using pytest
+7. **Test Suite**: Comprehensive unit and integration tests (125 tests) using pytest
 8. **Streamlit Web UI**: Full-featured web interface (`app.py`) with sidebar for Ollama management, file upload, indexing controls, and chat interface
 9. **Privacy-First**: Telemetry disabled via `.streamlit/config.toml` - no usage stats sent to external servers
 11. **Source Citations**: Added `query_with_sources()` method with Perplexity-style numbered references [1], [2], etc. LLM is prompted to cite sources, and UI displays expandable "Source references" panel with filename, page number (PDFs), and cleaned text snippets
@@ -56,6 +56,7 @@ The RAG system supports the following document formats:
 - PDF (`.pdf`)
 - Microsoft Word (`.doc`, `.docx`)
 - Plain text (`.txt`)
+- Markdown (`.md`)
 
 ## Installation
 
@@ -133,10 +134,10 @@ open htmlcov/index.html
   - HTML: `htmlcov/index.html`
   - XML: `coverage.xml`
 
-**Current Coverage**: 83% across all modules
-- `rag_engine.py`: 80% coverage
-- `project_manager.py`: 88% coverage
+**Current Coverage**: 99.4% across all modules
 - `constants.py`: 100% coverage
+- `project_manager.py`: 100% coverage
+- `rag_engine.py`: 99% coverage
 
 ## Usage
 
@@ -149,13 +150,13 @@ The easiest way to use the RAG system is through the Streamlit web interface:
 ```
 
 This opens a web UI at `http://localhost:8501` with:
-- **Sidebar**: Ollama controls (start/stop, model selection), file upload, document list with delete, indexing buttons
+- **Sidebar**: Ollama controls (start/stop, model selection), file upload, document list with delete, reindex button, new project creation
 - **Main area**: Chat interface with conversation history
 
 Features in the UI:
 - Upload documents via drag-and-drop or file picker
 - Delete documents with confirmation dialog
-- Index or reindex documents with visual feedback
+- Reindex documents (auto-indexing on upload, manual reindex available)
 - Chat with your documents in a conversational interface
 - **View source citations**: Expand the "📚 Source references" panel to see which documents were used for each answer
 - Clear chat history anytime
@@ -245,8 +246,12 @@ custom-rag/
 ├── tests/                 # Test suite
 │   ├── conftest.py        # Pytest fixtures
 │   ├── unit/
-│   │   ├── test_rag_engine.py      # Core RAGEngine tests (18 tests)
-│   │   └── test_rag_sources.py       # Source citations tests (10 tests)
+│   │   ├── test_rag_engine.py        # Core RAGEngine tests
+│   │   ├── test_rag_sources.py     # Source citations tests
+│   │   ├── test_app_upload.py        # Upload handling regression tests
+│   │   ├── test_upload_filename.py   # Filename handling tests
+│   │   ├── test_project_manager.py   # Project management tests
+│   │   └── test_garbled_detection.py # Text sanitization tests
 │   └── integration/
 │       ├── test_app_ollama.py
 │       ├── test_chat_flow.py
@@ -262,15 +267,11 @@ custom-rag/
 
 Potential improvements and experiments to explore:
 
-- ✅ **Create an interactive UI for the RAG**: ~~Build a web-based or desktop GUI interface to make the RAG system more accessible to non-technical users~~ **DONE** - Streamlit UI implemented with file management, indexing, and chat
 - Test the UI with different document types and sizes
 - Improve the UI with better error handling and user feedback
-- **UI interface broken for single and multi file projects, test, debug and fix**
 - **Chunk size optimization experiments**: Test different chunk sizes and overlap settings to find optimal balance between context preservation and retrieval precision
 - **Retrieval tuning differences with similarity_top_k and response_mode**: Experiment with different `similarity_top_k` values (e.g., 3, 5, 10) and response modes (`compact`, `tree_summarize`, `accumulate`) to optimize answer quality
-- ✅ **Source citations in chat**: ~~Show which document chunks were used to generate each answer~~ **DONE** - Implemented `query_with_sources()` with Perplexity-style numbered references and expandable source panel
 - **Conversation memory**: Enable multi-turn context-aware conversations using chat history
-- ✅ **Multiple collection support**: ~~Allow organizing documents into separate collections/projects~~ **DONE** - Implemented isolated `projects/` directories, each with its own data and ChromaDB folder
 - **Export chat history**: Save conversations to JSON or Markdown files
 - **Create eval tests** for the RAG system to evaluate answer quality and citation accuracy between models, chunk sizes, and retrieval strategies
 - **Fix citation engine** to properly handle citations and sources, maybe experiment with custom citation engine instead of llmaindex built in
