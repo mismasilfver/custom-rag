@@ -8,7 +8,7 @@ class TestSupportedExtensions:
 
     def test_contains_expected_extensions(self):
         """Should contain expected file extensions."""
-        expected = {".pdf", ".doc", ".docx", ".txt"}
+        expected = {".pdf", ".doc", ".docx", ".txt", ".md"}
         assert SUPPORTED_EXTENSIONS == expected
 
     def test_is_frozen_set(self):

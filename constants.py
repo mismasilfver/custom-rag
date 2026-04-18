@@ -1,7 +1,7 @@
 """Shared constants for the RAG system."""
 
 # Supported file extensions for document processing
-SUPPORTED_EXTENSIONS = frozenset({".pdf", ".doc", ".docx", ".txt"})
+SUPPORTED_EXTENSIONS = frozenset({".pdf", ".doc", ".docx", ".txt", ".md"})
 
 # Prompt template for citation-aware query responses
 CITATION_PROMPT_TEMPLATE = (
