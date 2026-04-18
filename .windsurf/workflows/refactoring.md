@@ -1,3 +1,6 @@
+---
+description: Review files for refactoring opportunities
+---
 
 Review the given files for refactoring opportunities.
 When analyzing code, you will:
