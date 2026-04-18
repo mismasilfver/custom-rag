@@ -3,6 +3,7 @@ import logging
 import re
 import shutil
 import subprocess
+import tempfile
 import time
 import urllib.request
 from pathlib import Path
@@ -10,6 +11,7 @@ from pathlib import Path
 import chromadb
 import pymupdf4llm
 from llama_index.core import (
+    PromptTemplate,
     Settings,
     SimpleDirectoryReader,
     StorageContext,
@@ -19,6 +21,8 @@ from llama_index.readers.file import PyMuPDFReader
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
 from constants import CITATION_PROMPT_TEMPLATE, SUPPORTED_EXTENSIONS
+
+COLLECTION_NAME = "documents"
 
 logger = logging.getLogger(__name__)
 
@@ -254,8 +258,6 @@ class RAGEngine:
         Returns:
             True on success.
         """
-        import tempfile
-
         data_path = Path(self.data_dir)
         original_data_dir = self.data_dir
 
@@ -285,10 +287,9 @@ class RAGEngine:
         """Internal: build or load the vector index."""
 
         chroma_client = chromadb.PersistentClient(path=self.chroma_dir)
-        collection_name = "documents"
 
         existing_collections = chroma_client.list_collections()
-        collection_exists = any(c.name == collection_name for c in existing_collections)
+        collection_exists = any(c.name == COLLECTION_NAME for c in existing_collections)
 
         if not collection_exists or force:
             data_path = Path(self.data_dir)
@@ -312,8 +313,8 @@ class RAGEngine:
         Settings.llm = llm
 
         if collection_exists and not force:
-            logger.info(f"Loading existing ChromaDB collection '{collection_name}'")
-            collection = chroma_client.get_collection(collection_name)
+            logger.info(f"Loading existing ChromaDB collection '{COLLECTION_NAME}'")
+            collection = chroma_client.get_collection(COLLECTION_NAME)
             vector_store = ChromaVectorStore(chroma_collection=collection)
             storage_context = StorageContext.from_defaults(vector_store=vector_store)
             self._index = VectorStoreIndex.from_vector_store(
@@ -330,7 +331,7 @@ class RAGEngine:
             ).load_data()
             if not docs:
                 raise ValueError(f"No documents found in {self.data_dir}")
-            collection = chroma_client.get_or_create_collection(collection_name)
+            collection = chroma_client.get_or_create_collection(COLLECTION_NAME)
             vector_store = ChromaVectorStore(chroma_collection=collection)
             storage_context = StorageContext.from_defaults(vector_store=vector_store)
             self._index = VectorStoreIndex.from_documents(
@@ -344,12 +345,6 @@ class RAGEngine:
         return True
 
     # ── Querying ──────────────────────────────────────────────────────
-
-    def _get_citation_prompt_template(self):
-        """Create a prompt template that encourages citation generation."""
-        from llama_index.core import PromptTemplate
-
-        return PromptTemplate(CITATION_PROMPT_TEMPLATE)
 
     def _ensure_index_and_query_engine(self, similarity_top_k=3, qa_prompt=None):
         """Ensure index and query engine are initialized.
@@ -387,9 +382,6 @@ class RAGEngine:
         - sources: List of source dicts with number, file_name,
           page_label, snippet, score
         """
-        from llama_index.core import PromptTemplate
-
-        # Create citation-aware prompt
         qa_prompt = PromptTemplate(CITATION_PROMPT_TEMPLATE)
 
         self._ensure_index_and_query_engine(

@@ -508,24 +508,3 @@ class TestRAGEngineBuildIndex:
                                             match="No documents found",
                                         ):
                                             engine._build_index(force=False)
-
-
-class TestRAGEngineGetCitationPromptTemplate:
-    """Tests for _get_citation_prompt_template."""
-
-    def test_returns_prompt_template_wrapping_citation_constant(
-        self, tmp_data_dir, tmp_chroma_dir
-    ):
-        from constants import CITATION_PROMPT_TEMPLATE
-        from rag_engine import RAGEngine
-
-        engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
-
-        with patch("llama_index.core.PromptTemplate") as mock_pt_class:
-            mock_pt_instance = MagicMock()
-            mock_pt_class.return_value = mock_pt_instance
-
-            result = engine._get_citation_prompt_template()
-
-        mock_pt_class.assert_called_once_with(CITATION_PROMPT_TEMPLATE)
-        assert result is mock_pt_instance

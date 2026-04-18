@@ -97,11 +97,7 @@ class ProjectManager:
 
         projects = []
         for item in self.base_dir.iterdir():
-            if (
-                item.is_dir()
-                and (item / "data").exists()
-                and (item / "chroma_db").exists()
-            ):
+            if item.is_dir() and self._is_valid_project(item):
                 projects.append(item.name)
 
         return sorted(projects)
