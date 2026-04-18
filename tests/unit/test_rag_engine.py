@@ -217,7 +217,9 @@ class TestRAGEngineBuildIndexEmptyDataDir:
         mock_chroma_client = MagicMock()
         mock_chroma_client.list_collections.return_value = []
 
-        with patch("chromadb.PersistentClient", return_value=mock_chroma_client):
+        with patch(
+            "rag_engine.chromadb.PersistentClient", return_value=mock_chroma_client
+        ):
             with patch(
                 "rag_engine.RAGEngine._initialize_embed_model",
                 return_value=MagicMock(),
@@ -343,7 +345,7 @@ class TestRAGEngineBuildIndex:
 
         mock_client, _ = self._make_mock_chroma_client([])
 
-        with patch("chromadb.PersistentClient", return_value=mock_client):
+        with patch("rag_engine.chromadb.PersistentClient", return_value=mock_client):
             with pytest.raises(FileNotFoundError):
                 engine._build_index(force=False)
 
@@ -357,7 +359,7 @@ class TestRAGEngineBuildIndex:
 
         mock_client, _ = self._make_mock_chroma_client([])
 
-        with patch("chromadb.PersistentClient", return_value=mock_client):
+        with patch("rag_engine.chromadb.PersistentClient", return_value=mock_client):
             with pytest.raises(ValueError, match="No supported documents"):
                 engine._build_index(force=False)
 
@@ -372,13 +374,13 @@ class TestRAGEngineBuildIndex:
         mock_vector_store = MagicMock()
         mock_index = MagicMock()
 
-        with patch("chromadb.PersistentClient", return_value=mock_client):
+        with patch("rag_engine.chromadb.PersistentClient", return_value=mock_client):
             with patch(
-                "llama_index.vector_stores.chroma.ChromaVectorStore",
+                "rag_engine.ChromaVectorStore",
                 return_value=mock_vector_store,
             ):
-                with patch("llama_index.core.StorageContext"):
-                    with patch("llama_index.core.VectorStoreIndex") as mock_vi:
+                with patch("rag_engine.StorageContext"):
+                    with patch("rag_engine.VectorStoreIndex") as mock_vi:
                         mock_vi.from_vector_store.return_value = mock_index
                         with patch.object(
                             engine,
@@ -390,7 +392,7 @@ class TestRAGEngineBuildIndex:
                                 "_initialize_llm",
                                 return_value=MagicMock(),
                             ):
-                                with patch("llama_index.core.Settings"):
+                                with patch("rag_engine.Settings"):
                                     result = engine._build_index(force=False)
 
         assert result is True
@@ -411,17 +413,15 @@ class TestRAGEngineBuildIndex:
         mock_index = MagicMock()
         mock_docs = [MagicMock()]
 
-        with patch("chromadb.PersistentClient", return_value=mock_client):
+        with patch("rag_engine.chromadb.PersistentClient", return_value=mock_client):
             with patch(
-                "llama_index.vector_stores.chroma.ChromaVectorStore",
+                "rag_engine.ChromaVectorStore",
                 return_value=mock_vector_store,
             ):
-                with patch("llama_index.core.StorageContext"):
-                    with patch("llama_index.core.VectorStoreIndex") as mock_vi:
+                with patch("rag_engine.StorageContext"):
+                    with patch("rag_engine.VectorStoreIndex") as mock_vi:
                         mock_vi.from_documents.return_value = mock_index
-                        with patch(
-                            "llama_index.core.SimpleDirectoryReader"
-                        ) as mock_sdr:
+                        with patch("rag_engine.SimpleDirectoryReader") as mock_sdr:
                             mock_sdr.return_value.load_data.return_value = mock_docs
                             with patch.object(
                                 engine,
@@ -433,7 +433,7 @@ class TestRAGEngineBuildIndex:
                                     "_initialize_llm",
                                     return_value=MagicMock(),
                                 ):
-                                    with patch("llama_index.core.Settings"):
+                                    with patch("rag_engine.Settings"):
                                         result = engine._build_index(force=False)
 
         assert result is True
@@ -453,17 +453,15 @@ class TestRAGEngineBuildIndex:
         mock_index = MagicMock()
         mock_docs = [MagicMock()]
 
-        with patch("chromadb.PersistentClient", return_value=mock_client):
+        with patch("rag_engine.chromadb.PersistentClient", return_value=mock_client):
             with patch(
-                "llama_index.vector_stores.chroma.ChromaVectorStore",
+                "rag_engine.ChromaVectorStore",
                 return_value=mock_vector_store,
             ):
-                with patch("llama_index.core.StorageContext"):
-                    with patch("llama_index.core.VectorStoreIndex") as mock_vi:
+                with patch("rag_engine.StorageContext"):
+                    with patch("rag_engine.VectorStoreIndex") as mock_vi:
                         mock_vi.from_documents.return_value = mock_index
-                        with patch(
-                            "llama_index.core.SimpleDirectoryReader"
-                        ) as mock_sdr:
+                        with patch("rag_engine.SimpleDirectoryReader") as mock_sdr:
                             mock_sdr.return_value.load_data.return_value = mock_docs
                             with patch.object(
                                 engine,
@@ -475,7 +473,7 @@ class TestRAGEngineBuildIndex:
                                     "_initialize_llm",
                                     return_value=MagicMock(),
                                 ):
-                                    with patch("llama_index.core.Settings"):
+                                    with patch("rag_engine.Settings"):
                                         result = engine._build_index(force=True)
 
         assert result is True
@@ -492,8 +490,8 @@ class TestRAGEngineBuildIndex:
 
         mock_client, _ = self._make_mock_chroma_client([])
 
-        with patch("chromadb.PersistentClient", return_value=mock_client):
-            with patch("llama_index.core.SimpleDirectoryReader") as mock_sdr:
+        with patch("rag_engine.chromadb.PersistentClient", return_value=mock_client):
+            with patch("rag_engine.SimpleDirectoryReader") as mock_sdr:
                 mock_sdr.return_value.load_data.return_value = []
                 with patch.object(
                     engine, "_initialize_embed_model", return_value=MagicMock()
@@ -501,12 +499,10 @@ class TestRAGEngineBuildIndex:
                     with patch.object(
                         engine, "_initialize_llm", return_value=MagicMock()
                     ):
-                        with patch("llama_index.core.Settings"):
-                            with patch(
-                                "llama_index.vector_stores.chroma.ChromaVectorStore"
-                            ):
-                                with patch("llama_index.core.StorageContext"):
-                                    with patch("llama_index.core.VectorStoreIndex"):
+                        with patch("rag_engine.Settings"):
+                            with patch("rag_engine.ChromaVectorStore"):
+                                with patch("rag_engine.StorageContext"):
+                                    with patch("rag_engine.VectorStoreIndex"):
                                         with pytest.raises(
                                             ValueError,
                                             match="No documents found",

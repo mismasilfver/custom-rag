@@ -7,6 +7,16 @@ import time
 import urllib.request
 from pathlib import Path
 
+import chromadb
+from llama_index.core import (
+    Settings,
+    SimpleDirectoryReader,
+    StorageContext,
+    VectorStoreIndex,
+)
+from llama_index.readers.file import PyMuPDFReader
+from llama_index.vector_stores.chroma import ChromaVectorStore
+
 from constants import CITATION_PROMPT_TEMPLATE, SUPPORTED_EXTENSIONS
 
 logger = logging.getLogger(__name__)
@@ -195,14 +205,6 @@ class RAGEngine:
 
     def _build_index(self, force=False):
         """Internal: build or load the vector index."""
-        import chromadb
-        from llama_index.core import (
-            Settings,
-            SimpleDirectoryReader,
-            StorageContext,
-            VectorStoreIndex,
-        )
-        from llama_index.vector_stores.chroma import ChromaVectorStore
 
         chroma_client = chromadb.PersistentClient(path=self.chroma_dir)
         collection_name = "documents"
@@ -244,7 +246,10 @@ class RAGEngine:
             logger.info("Existing index loaded successfully")
         else:
             logger.info("Loading documents and generating embeddings...")
-            docs = SimpleDirectoryReader(self.data_dir).load_data()
+            docs = SimpleDirectoryReader(
+                self.data_dir,
+                file_extractor={".pdf": PyMuPDFReader()},
+            ).load_data()
             if not docs:
                 raise ValueError(f"No documents found in {self.data_dir}")
             collection = chroma_client.get_or_create_collection(collection_name)
