@@ -53,6 +53,33 @@ def _clean_text_for_display(text, max_length=200):
     return cleaned
 
 
+def is_snippet_garbled(text, min_ascii_letter_ratio=0.7):
+    """Detect whether a text snippet appears garbled due to font encoding issues.
+
+    Uses the ratio of ASCII letters (a-z, A-Z) to total non-whitespace
+    characters as a readability signal. Clean prose is typically >70% ASCII
+    letters; font-encoded garbage drops well below that threshold.
+
+    Args:
+        text: The snippet string to evaluate.
+        min_ascii_letter_ratio: Minimum ratio of ASCII letters required to
+            consider the text readable. Default 0.7 (70%).
+
+    Returns:
+        True if the snippet appears garbled, False otherwise.
+    """
+    if not text:
+        return False
+
+    non_whitespace = [c for c in text if not c.isspace()]
+    if not non_whitespace:
+        return False
+
+    ascii_letters = sum(1 for c in non_whitespace if c.isascii() and c.isalpha())
+    ratio = ascii_letters / len(non_whitespace)
+    return ratio < min_ascii_letter_ratio
+
+
 class RAGEngine:
     """Core RAG engine with lazy initialization. No side effects on import."""
 
