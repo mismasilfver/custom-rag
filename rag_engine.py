@@ -52,7 +52,7 @@ class RAGEngine:
         chroma_dir="./chroma_db",
         ollama_host="http://localhost:11434",
         # model_name="llama3.1:8b",
-        model_name="phi4",
+        model_name="phi4:latest",
         # embed_model_name="bge-m3:latest",
         embed_model_name="nomic-embed-text:latest",
     ):
