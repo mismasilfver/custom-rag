@@ -37,6 +37,7 @@
 - Never delete or modify tests without explicit direction
 - Use Conventional Commits style for commit messages
 - Never push to remote repository without explicit approval from user
+- Never use git add .
 
 ## Communication
 - Be direct and concise
