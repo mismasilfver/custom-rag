@@ -81,6 +81,19 @@ def is_snippet_garbled(text, min_ascii_letter_ratio=0.7):
     return ratio < min_ascii_letter_ratio
 
 
+def sources_contain_garbled(sources):
+    """Return True if any source snippet appears garbled.
+
+    Args:
+        sources: List of source dicts as returned by query_with_sources,
+            each optionally containing a 'snippet' key.
+
+    Returns:
+        True if at least one snippet is garbled, False otherwise.
+    """
+    return any(is_snippet_garbled(s.get("snippet", "")) for s in sources)
+
+
 class RAGEngine:
     """Core RAG engine with lazy initialization. No side effects on import."""
 

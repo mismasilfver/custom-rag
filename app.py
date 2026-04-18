@@ -4,7 +4,7 @@ import tempfile
 import streamlit as st
 
 from project_manager import ProjectManager
-from rag_engine import RAGEngine
+from rag_engine import RAGEngine, sources_contain_garbled
 
 logger = logging.getLogger(__name__)
 
@@ -150,6 +150,8 @@ def render_chat_section(engine):
                     # Display source references
                     if sources:
                         render_source_references(sources)
+                        if sources_contain_garbled(sources):
+                            st.session_state.garbled_detected = True
 
                     # Store assistant response in history
                     st.session_state.messages.append(
@@ -169,6 +171,30 @@ def render_chat_section(engine):
                             "sources": [],
                         }
                     )
+
+    # Garbled sources warning + reindex offer
+    if st.session_state.get("garbled_detected"):
+        st.warning(
+            "⚠️ Some source snippets appear garbled due to font encoding issues. "
+            "Would you like to re-index using PDF→Markdown conversion "
+            "for better results?"
+        )
+        col1, col2 = st.columns([1, 4])
+        with col1:
+            if st.button("Yes, re-index", key="reindex_markdown_btn"):
+                with st.spinner("Converting PDFs to Markdown and re-indexing..."):
+                    engine.reindex_with_markdown()
+                st.session_state.garbled_detected = False
+                st.session_state.messages = []
+                st.success(
+                    "Re-indexing complete. "
+                    "Your queries should now show readable sources."
+                )
+                st.rerun()
+        with col2:
+            if st.button("No, keep current index", key="keep_index_btn"):
+                st.session_state.garbled_detected = False
+                st.rerun()
 
     # Clear chat button
     if st.session_state.messages:
