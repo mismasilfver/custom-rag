@@ -236,14 +236,11 @@ def render_chat_section(engine, chat_history_path):
             with st.chat_message(message["role"], avatar=avatar):
                 # Copy button for assistant messages
                 if message["role"] == "assistant":
-                    col_msg, col_copy, col_regen = st.columns([10, 1, 1])
+                    col_msg, col_buttons = st.columns([8, 2])
                     with col_msg:
                         st.markdown(message["content"])
-                    with col_copy:
+                    with col_buttons:
                         copy_button(message["content"], key=f"copy_{i}")
-                    with col_regen:
-                        # DEBUG: Show if prompt is in message
-                        st.caption(f"prompt: {'prompt' in message}")
                         # Regenerate button (only if prompt is tracked)
                         if "prompt" in message:
                             if st.button(
@@ -537,7 +534,15 @@ def main():
 
         # Rehydrate display messages from disk after a page reload
         if not st.session_state.messages and chat_history_path:
-            st.session_state.messages = engine.load_chat_messages(chat_history_path)
+            loaded = engine.load_chat_messages(chat_history_path)
+            # Reconstruct prompt field by pairing each assistant message
+            # with the content of the preceding user message
+            for idx, msg in enumerate(loaded):
+                if msg["role"] == "assistant" and idx > 0:
+                    prev = loaded[idx - 1]
+                    if prev["role"] == "user":
+                        msg["prompt"] = prev["content"]
+            st.session_state.messages = loaded
 
         # Check if documents are indexed
         try:
