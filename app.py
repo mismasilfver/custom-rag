@@ -57,6 +57,12 @@ def get_engine(project_name):
     return RAGEngine(data_dir=paths["data_dir"], chroma_dir=paths["chroma_dir"])
 
 
+def get_chat_history_path(project_name):
+    """Return the chat history JSON path for a project."""
+    paths = pm.get_project_paths(project_name)
+    return paths["chat_history_path"] if paths else None
+
+
 def render_project_section():
     """Render the project selection and creation UI."""
     st.sidebar.header("📁 Projects")
@@ -80,6 +86,10 @@ def render_project_section():
 
     # Handle project switch
     if selected_project != st.session_state.current_project:
+        old_engine = get_engine(st.session_state.current_project)
+        old_path = get_chat_history_path(st.session_state.current_project)
+        if old_engine and old_path:
+            old_engine.clear_chat_history(old_path)
         st.session_state.current_project = selected_project
         st.session_state.messages = []  # Clear chat history on switch
         st.rerun()
@@ -128,10 +138,21 @@ def render_source_references(sources):
             st.markdown("---")
 
 
-def render_chat_section(engine):
+def render_chat_section(engine, chat_history_path):
     """Render the chat interface with conversation history and source citations."""
     st.markdown("---")
     st.subheader("💬 Chat with your documents")
+
+    # Show onboarding hint only when there is no conversation yet
+    if not st.session_state.messages:
+        st.info(
+            "**Chat history is preserved across page reloads.** "
+            "Each message you send is saved to your project folder, so you can "
+            "pick up right where you left off after refreshing the browser. "
+            'Follow-up questions like *"tell me more"* or *"expand on point 2"* '
+            "work naturally — the assistant always has the full conversation context. "
+            "Use **🗑️ Clear chat history** below to start a fresh conversation."
+        )
 
     # Display chat history
     for message in st.session_state.messages:
@@ -154,7 +175,7 @@ def render_chat_section(engine):
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
                 try:
-                    result = engine.query_with_sources(prompt)
+                    result = engine.chat(prompt, chat_history_path)
                     answer = result["answer"]
                     sources = result["sources"]
 
@@ -212,6 +233,7 @@ def render_chat_section(engine):
     # Clear chat button
     if st.session_state.messages:
         if st.button("🗑️ Clear chat history", key="clear_chat"):
+            engine.clear_chat_history(chat_history_path)
             st.session_state.messages = []
             st.rerun()
 
@@ -362,10 +384,16 @@ def main():
             st.error("🚫 Ollama is not running. Please start it from the sidebar.")
             return
 
+        chat_history_path = get_chat_history_path(st.session_state.current_project)
+
+        # Rehydrate display messages from disk after a page reload
+        if not st.session_state.messages and chat_history_path:
+            st.session_state.messages = engine.load_chat_messages(chat_history_path)
+
         # Check if documents are indexed
         try:
             engine.ensure_index()
-            render_chat_section(engine)
+            render_chat_section(engine, chat_history_path)
         except Exception:
             st.warning(
                 "📄 Add documents and click **Index** in the sidebar to get started."
