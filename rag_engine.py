@@ -106,10 +106,8 @@ class RAGEngine:
         data_dir="data",
         chroma_dir="./chroma_db",
         ollama_host="http://localhost:11434",
-        # model_name="llama3.1:8b",
-        model_name="phi4:latest",
-        # embed_model_name="bge-m3:latest",
-        embed_model_name="nomic-embed-text:latest",
+        model_name="gemma4:e4b",
+        embed_model_name="bge-m3:latest",
     ):
         self.data_dir = data_dir
         self.chroma_dir = chroma_dir
@@ -373,7 +371,7 @@ class RAGEngine:
             query_engine_kwargs = {
                 "llm": self._initialize_llm(),
                 "similarity_top_k": similarity_top_k,
-                "response_mode": "tree_summarize",
+                "response_mode": "compact",
             }
             if qa_prompt is not None:
                 query_engine_kwargs["text_qa_template"] = qa_prompt

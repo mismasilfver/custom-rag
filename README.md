@@ -270,7 +270,8 @@ Potential improvements and experiments to explore:
 - Test the UI with different document types and sizes
 - Improve the UI with better error handling and user feedback
 - **Chunk size optimization experiments**: Test different chunk sizes and overlap settings to find optimal balance between context preservation and retrieval precision
-- **Retrieval tuning differences with similarity_top_k and response_mode**: Experiment with different `similarity_top_k` values (e.g., 3, 5, 10) and response modes (`compact`, `tree_summarize`, `accumulate`) to optimize answer quality
+- **Retrieval tuning differences with similarity_top_k and response_mode**: Experiment with different `similarity_top_k` values (e.g., 3, 5, 10) and response modes (`default`, `compact`, `tree_summarize`, `accumulate`) to optimize answer quality
+- **Response mode selector**: User might want to select response mode depending on what they want at that moment from RAG
 - **Conversation memory**: Enable multi-turn context-aware conversations using chat history. Current approach uses ContextChatEngine. Alternative would be CondenceQuestionChatEngine.
 - **Export chat history**: Save conversations to JSON or Markdown files
 - **Create eval tests** for the RAG system to evaluate answer quality and citation accuracy between models, chunk sizes, and retrieval strategies
