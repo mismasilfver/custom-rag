@@ -1,5 +1,6 @@
 import logging
 import tempfile
+from datetime import datetime
 from pathlib import Path
 
 import streamlit as st
@@ -178,14 +179,20 @@ def render_chat_section(engine, chat_history_path):
             avatar = "🧑‍💻" if message["role"] == "user" else "🤖"
             with st.chat_message(message["role"], avatar=avatar):
                 st.markdown(message["content"])
+                # Show timestamp if available
+                if "timestamp" in message:
+                    time_str = message["timestamp"].strftime("%H:%M")
+                    st.caption(f"🕐 {time_str}")
                 # Show source references in expandable section if available
                 if "sources" in message and message["sources"]:
                     render_source_references(message["sources"])
 
     # Chat input - must be outside container to stay at bottom
     if prompt := st.chat_input("Ask a question about your documents..."):
-        # Add user message to history
-        st.session_state.messages.append({"role": "user", "content": prompt})
+        # Add user message to history with timestamp
+        st.session_state.messages.append(
+            {"role": "user", "content": prompt, "timestamp": datetime.now()}
+        )
 
         # Display user message
         with chat_container:
@@ -209,12 +216,13 @@ def render_chat_section(engine, chat_history_path):
                             if sources_contain_garbled(sources):
                                 st.session_state.garbled_detected = True
 
-                        # Store assistant response in history
+                        # Store assistant response in history with timestamp
                         st.session_state.messages.append(
                             {
                                 "role": "assistant",
                                 "content": answer,
                                 "sources": sources,
+                                "timestamp": datetime.now(),
                             }
                         )
                     except Exception as e:
@@ -225,6 +233,7 @@ def render_chat_section(engine, chat_history_path):
                                 "role": "assistant",
                                 "content": error_msg,
                                 "sources": [],
+                                "timestamp": datetime.now(),
                             }
                         )
 
