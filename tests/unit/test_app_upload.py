@@ -41,8 +41,8 @@ class TestFileUploadRerunRegression:
         remaining_code = section_code[upload_block_start:]
 
         # Find where the upload block ends (next top-level block or function end)
-        # In the fixed code, the upload block is followed by listing current files
-        next_block = remaining_code.find("\n    # List current files")
+        # In the fixed code, the upload block is followed by file listing section
+        next_block = remaining_code.find("\n        # List current files")
         if next_block == -1:
             upload_block = remaining_code
         else:

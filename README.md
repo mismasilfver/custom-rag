@@ -16,6 +16,9 @@ Notice, you're still stopped by ollama's internal guardrails when trying to quer
 - **Interactive Query Mode**: Ask questions interactively or run predefined test queries
 - **Comprehensive Logging**: Detailed logging for debugging and observability
 - **Memory Efficient**: Designed to work with consumer hardware (tested on MacBook with 36GB RAM)
+- **Polished Chat UI**: Message timestamps (HH:MM), copy button (📋) on every assistant response, and regenerate button (🔄) to re-query the LLM for a new answer
+- **Interactive Feedback**: Toast notifications for all actions (file upload, delete, project creation, clear chat), status indicators for long-running operations
+- **Visual Layout**: Bordered containers, metric displays, custom avatars (🧑‍💻/🤖), and themed colour palette
 
 ## Original Source
 
@@ -32,7 +35,7 @@ The following changes have been made to the original tutorial code:
 4. **ChromaDB Persistence**: Implemented persistent storage of embeddings to `./chroma_db`, preventing regeneration on every run
 5. **CLI Arguments**: Added command-line flags for `--reindex` (force reindexing), `--interactive` (interactive mode), `--reset` (reset data), `--project` (target specific project), and `--list` (show available projects)
 6. **Refactored Architecture**: Extracted core logic into `RAGEngine` class with lazy initialization - no side effects on import
-7. **Test Suite**: Comprehensive unit and integration tests (125 tests) using pytest
+7. **Test Suite**: Comprehensive unit and integration tests (153 tests) using pytest
 8. **Streamlit Web UI**: Full-featured web interface (`app.py`) with sidebar for Ollama management, file upload, indexing controls, and chat interface
 9. **Privacy-First**: Telemetry disabled via `.streamlit/config.toml` - no usage stats sent to external servers
 11. **Source Citations**: Added `query_with_sources()` method with Perplexity-style numbered references [1], [2], etc. LLM is prompted to cite sources, and UI displays expandable "Source references" panel with filename, page number (PDFs), and cleaned text snippets
@@ -50,6 +53,7 @@ The following changes have been made to the original tutorial code:
 | `chromadb>=0.5.0` | Chroma vector database for embedding storage |
 | `pypdf>=4.0` | PDF text extraction library |
 | `streamlit>=1.30.0` | Web UI framework for interactive interface |
+| `st-copy>=0.1.0` | Copy-to-clipboard button component for chat responses |
 
 ## Supported Document Types
 
@@ -160,6 +164,10 @@ Features in the UI:
 - Reindex documents (auto-indexing on upload, manual reindex available)
 - Chat with your documents in a conversational interface
 - **View source citations**: Expand the "📚 Source references" panel to see which documents were used for each answer
+- **Message timestamps**: Each message shows HH:MM time
+- **Copy responses**: 📋 button on every assistant message to copy to clipboard
+- **Regenerate response**: 🔄 button to re-query the LLM for a fresh answer
+- **Toast notifications**: Immediate feedback for uploads, deletions, project creation, and chat actions
 - Clear chat history anytime
 
 ### CLI Mode
@@ -275,6 +283,7 @@ Potential improvements and experiments to explore:
 - **Retrieval tuning differences with similarity_top_k and response_mode**: Experiment with different `similarity_top_k` values (e.g., 3, 5, 10) and response modes (`default`, `compact`, `tree_summarize`, `accumulate`) to optimize answer quality
 - **Response mode selector**: User might want to select response mode depending on what they want at that moment from RAG
 - ~~**Conversation memory**: Enable multi-turn context-aware conversations using chat history.~~ ✅ Done — uses `ContextChatEngine` with per-project persisted `SimpleChatStore`
+- ~~**Improve the UI with better error handling and user feedback**~~ ✅ Done — toast notifications, status indicators, timestamps, copy & regenerate buttons
 - **Export chat history**: Save conversations to JSON or Markdown files
 - **Create eval tests** for the RAG system to evaluate answer quality and citation accuracy between models, chunk sizes, and retrieval strategies
 - **Fix citation engine** to properly handle citations and sources, maybe experiment with custom citation engine instead of llmaindex built in
