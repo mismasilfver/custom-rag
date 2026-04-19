@@ -271,7 +271,7 @@ Potential improvements and experiments to explore:
 - Improve the UI with better error handling and user feedback
 - **Chunk size optimization experiments**: Test different chunk sizes and overlap settings to find optimal balance between context preservation and retrieval precision
 - **Retrieval tuning differences with similarity_top_k and response_mode**: Experiment with different `similarity_top_k` values (e.g., 3, 5, 10) and response modes (`compact`, `tree_summarize`, `accumulate`) to optimize answer quality
-- **Conversation memory**: Enable multi-turn context-aware conversations using chat history
+- **Conversation memory**: Enable multi-turn context-aware conversations using chat history. Current approach uses ContextChatEngine. Alternative would be CondenceQuestionChatEngine.
 - **Export chat history**: Save conversations to JSON or Markdown files
 - **Create eval tests** for the RAG system to evaluate answer quality and citation accuracy between models, chunk sizes, and retrieval strategies
 - **Fix citation engine** to properly handle citations and sources, maybe experiment with custom citation engine instead of llmaindex built in
