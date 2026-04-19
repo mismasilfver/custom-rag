@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 import streamlit as st
-from st_copy import st_copy
+from st_copy import copy_button
 
 from constants import SUPPORTED_EXTENSIONS
 from project_manager import ProjectManager
@@ -185,7 +185,7 @@ def render_chat_section(engine, chat_history_path):
                     with col_msg:
                         st.markdown(message["content"])
                     with col_copy:
-                        st_copy(message["content"], key=f"copy_{i}")
+                        copy_button(message["content"], key=f"copy_{i}")
                 else:
                     st.markdown(message["content"])
                 # Show timestamp if available
@@ -226,7 +226,7 @@ def render_chat_section(engine, chat_history_path):
                         st.caption(f"🕐 {time_str}")
 
                         # Copy button for this response
-                        st_copy(answer, key="copy_new_response")
+                        copy_button(answer, key="copy_new_response")
 
                         # Display source references
                         if sources:
@@ -249,7 +249,7 @@ def render_chat_section(engine, chat_history_path):
                         time_str = datetime.now().strftime("%H:%M")
                         st.caption(f"🕐 {time_str}")
                         # Copy button for error message
-                        st_copy(error_msg, key="copy_error")
+                        copy_button(error_msg, key="copy_error")
                         st.session_state.messages.append(
                             {
                                 "role": "assistant",
