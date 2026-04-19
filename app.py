@@ -175,10 +175,23 @@ def render_chat_section(engine, chat_history_path):
     # Display chat history in a scrollable container
     chat_container = st.container(height=400, border=True)
     with chat_container:
-        for message in st.session_state.messages:
+        for i, message in enumerate(st.session_state.messages):
             avatar = "🧑‍💻" if message["role"] == "user" else "🤖"
             with st.chat_message(message["role"], avatar=avatar):
-                st.markdown(message["content"])
+                # Copy button for assistant messages
+                if message["role"] == "assistant":
+                    col_msg, col_copy = st.columns([10, 1])
+                    with col_msg:
+                        st.markdown(message["content"])
+                    with col_copy:
+                        st.copy_button(
+                            label="📋",
+                            value=message["content"],
+                            key=f"copy_{i}",
+                            help="Copy response",
+                        )
+                else:
+                    st.markdown(message["content"])
                 # Show timestamp if available
                 if "timestamp" in message:
                     time_str = message["timestamp"].strftime("%H:%M")
@@ -216,6 +229,14 @@ def render_chat_section(engine, chat_history_path):
                         time_str = datetime.now().strftime("%H:%M")
                         st.caption(f"🕐 {time_str}")
 
+                        # Copy button for this response
+                        st.copy_button(
+                            label="📋",
+                            value=answer,
+                            key="copy_new_response",
+                            help="Copy response",
+                        )
+
                         # Display source references
                         if sources:
                             render_source_references(sources)
@@ -236,6 +257,13 @@ def render_chat_section(engine, chat_history_path):
                         st.error(error_msg)
                         time_str = datetime.now().strftime("%H:%M")
                         st.caption(f"🕐 {time_str}")
+                        # Copy button for error message
+                        st.copy_button(
+                            label="📋",
+                            value=error_msg,
+                            key="copy_error",
+                            help="Copy error message",
+                        )
                         st.session_state.messages.append(
                             {
                                 "role": "assistant",
