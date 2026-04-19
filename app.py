@@ -198,6 +198,8 @@ def render_chat_section(engine, chat_history_path):
         with chat_container:
             with st.chat_message("user", avatar="🧑‍💻"):
                 st.markdown(prompt)
+                time_str = datetime.now().strftime("%H:%M")
+                st.caption(f"🕐 {time_str}")
 
         # Generate and display assistant response
         with chat_container:
@@ -209,6 +211,10 @@ def render_chat_section(engine, chat_history_path):
                         sources = result["sources"]
 
                         st.markdown(answer)
+
+                        # Display timestamp for this response
+                        time_str = datetime.now().strftime("%H:%M")
+                        st.caption(f"🕐 {time_str}")
 
                         # Display source references
                         if sources:
@@ -228,6 +234,8 @@ def render_chat_section(engine, chat_history_path):
                     except Exception as e:
                         error_msg = f"❌ Error: {str(e)}"
                         st.error(error_msg)
+                        time_str = datetime.now().strftime("%H:%M")
+                        st.caption(f"🕐 {time_str}")
                         st.session_state.messages.append(
                             {
                                 "role": "assistant",
