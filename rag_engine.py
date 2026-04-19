@@ -17,6 +17,8 @@ from llama_index.core import (
     StorageContext,
     VectorStoreIndex,
 )
+from llama_index.core.memory import ChatMemoryBuffer
+from llama_index.core.storage.chat_store import SimpleChatStore
 from llama_index.readers.file import PyMuPDFReader
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
@@ -120,6 +122,8 @@ class RAGEngine:
         self._embed_model = None
         self._index = None
         self._query_engine = None
+        self._chat_engine = None
+        self._chat_store = None
 
     # ── Ollama lifecycle ──────────────────────────────────────────────
 
@@ -185,6 +189,8 @@ class RAGEngine:
         self.model_name = model_name
         self._llm = None
         self._query_engine = None
+        self._chat_engine = None
+        self._chat_store = None
         logger.info(f"Model set to '{model_name}'")
 
     # ── File management ───────────────────────────────────────────────
@@ -427,6 +433,125 @@ class RAGEngine:
             "sources": sources,
         }
 
+    # ── Chat ──────────────────────────────────────────────────────────
+
+    def get_chat_engine(self, chat_history_path, system_prompt=None, token_limit=None):
+        """Return a ContextChatEngine backed by a persisted SimpleChatStore.
+
+        The instance is cached on ``_chat_engine`` and reused across calls.
+        Call ``clear_chat_history`` to reset it.
+
+        Args:
+            chat_history_path: Path to the JSON file used to persist chat history.
+            system_prompt: Optional system prompt override.
+            token_limit: Optional token limit for ChatMemoryBuffer.
+
+        Returns:
+            ContextChatEngine instance.
+        """
+        if self._chat_engine is not None:
+            return self._chat_engine
+
+        from constants import CHAT_SYSTEM_PROMPT, CHAT_TOKEN_LIMIT
+
+        if self._index is None:
+            self.ensure_index()
+
+        effective_system_prompt = (
+            system_prompt if system_prompt is not None else CHAT_SYSTEM_PROMPT
+        )
+        effective_token_limit = (
+            token_limit if token_limit is not None else CHAT_TOKEN_LIMIT
+        )
+
+        self._chat_store = SimpleChatStore.from_persist_path(chat_history_path)
+        memory = ChatMemoryBuffer.from_defaults(
+            token_limit=effective_token_limit,
+            chat_store=self._chat_store,
+            chat_store_key="default",
+        )
+
+        self._chat_engine = self._index.as_chat_engine(
+            chat_mode="context",
+            memory=memory,
+            llm=self._initialize_llm(),
+            system_prompt=effective_system_prompt,
+        )
+        logger.info(f"Chat engine initialised (token_limit={effective_token_limit})")
+        return self._chat_engine
+
+    def chat(self, message, chat_history_path):
+        """Send a message to the chat engine and return answer with sources.
+
+        Returns a dict with:
+        - answer: The LLM response string
+        - sources: List of source dicts with number, file_name, page_label,
+          snippet, score
+        """
+        chat_engine = self.get_chat_engine(chat_history_path)
+        logger.info(f"Chat message: '{message}'")
+        response = chat_engine.chat(message)
+
+        sources = []
+        if hasattr(response, "source_nodes") and response.source_nodes:
+            for i, source_node in enumerate(response.source_nodes, 1):
+                node = source_node.node
+                metadata = node.metadata
+                snippet = _clean_text_for_display(node.get_content(), max_length=200)
+                sources.append(
+                    {
+                        "number": i,
+                        "file_name": metadata.get("file_name", "Unknown"),
+                        "page_label": metadata.get("page_label"),
+                        "snippet": snippet,
+                        "score": getattr(source_node, "score", None),
+                    }
+                )
+
+        if self._chat_store is not None:
+            self._chat_store.persist(chat_history_path)
+
+        return {"answer": str(response), "sources": sources}
+
+    def load_chat_messages(self, chat_history_path):
+        """Load persisted chat messages for display in the UI.
+
+        Reads the SimpleChatStore JSON at ``chat_history_path`` and returns
+        a list of dicts suitable for ``st.session_state.messages``.
+        Returns an empty list if the file does not exist.
+
+        Args:
+            chat_history_path: Path to the persisted chat history JSON file.
+
+        Returns:
+            List of dicts with 'role' and 'content' keys.
+        """
+        if not Path(chat_history_path).exists():
+            return []
+
+        store = SimpleChatStore.from_persist_path(chat_history_path)
+        return [
+            {"role": str(msg.role), "content": msg.content}
+            for msg in store.get_messages("default")
+        ]
+
+    def clear_chat_history(self, chat_history_path):
+        """Reset the chat engine memory and delete the persisted history file.
+
+        Args:
+            chat_history_path: Path to the JSON file to delete.
+        """
+        if self._chat_engine is not None:
+            self._chat_engine.reset()
+            self._chat_engine = None
+
+        self._chat_store = None
+
+        history_file = Path(chat_history_path)
+        if history_file.exists():
+            history_file.unlink()
+            logger.info(f"Deleted chat history file: {chat_history_path}")
+
     # ── Reset ─────────────────────────────────────────────────────────
 
     def reset(self):
@@ -454,5 +579,7 @@ class RAGEngine:
 
         self._index = None
         self._query_engine = None
+        self._chat_engine = None
+        self._chat_store = None
         logger.info("Reset complete.")
         return True

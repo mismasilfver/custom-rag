@@ -10,7 +10,7 @@ Notice, you're still stopped by ollama's internal guardrails when trying to quer
 - **Web-based UI**: Streamlit interface for document management, indexing, and chat
 - **Ollama Integration**: Start/stop Ollama server directly from the UI, with model selection
 - **File Management**: Upload documents via drag-and-drop, delete with confirmation dialogs
-- **Chat Interface**: Conversational Q&A with conversation history and clear chat option
+- **Conversation Memory**: Multi-turn context-aware chat powered by LlamaIndex `ContextChatEngine` with `ChatMemoryBuffer`. Chat history is persisted per-project to `chat_history.json` and survives browser reloads. Follow-up questions like *"tell me more"* work naturally — the LLM always sees prior turns
 - **Local Document Processing**: Load and index PDF, Word, and text documents from a local directory
 - **Persistent Embeddings**: ChromaDB stores embeddings locally, avoiding reprocessing on subsequent runs
 - **Interactive Query Mode**: Ask questions interactively or run predefined test queries
@@ -37,6 +37,7 @@ The following changes have been made to the original tutorial code:
 9. **Privacy-First**: Telemetry disabled via `.streamlit/config.toml` - no usage stats sent to external servers
 11. **Source Citations**: Added `query_with_sources()` method with Perplexity-style numbered references [1], [2], etc. LLM is prompted to cite sources, and UI displays expandable "Source references" panel with filename, page number (PDFs), and cleaned text snippets
 12. **Text Sanitization**: Added `_clean_text_for_display()` helper to remove binary/garbage characters from PDF content extraction, ensuring readable source snippets
+13. **Conversation Memory**: Replaced stateless `query_with_sources()` with a `ContextChatEngine` (`chat_mode="context"`) backed by `ChatMemoryBuffer` (token limit 3000) and a `SimpleChatStore` persisted to `<project>/chat_history.json`. Each message is written to disk after the LLM responds, so chat history survives page reloads. `load_chat_messages()` rehydrates the Streamlit display list on startup. History is scoped per-project and cleared on project switch or explicit clear
 
 ## Dependencies
 
@@ -236,7 +237,8 @@ custom-rag/
 ├── projects/               # Base directory for all projects
 │   ├── default/            # The default project
 │   │   ├── data/           # PDF/TXT files for this project
-│   │   └── chroma_db/      # Vector database for this project
+│   │   ├── chroma_db/      # Vector database for this project
+│   │   └── chat_history.json  # Persisted chat memory (auto-created)
 │   └── ...                 # Additional projects
 ├── tests/                  # Pytest suite (unit & integration)
 ├── start-rag.sh            # Setup & run script
@@ -272,7 +274,7 @@ Potential improvements and experiments to explore:
 - **Chunk size optimization experiments**: Test different chunk sizes and overlap settings to find optimal balance between context preservation and retrieval precision
 - **Retrieval tuning differences with similarity_top_k and response_mode**: Experiment with different `similarity_top_k` values (e.g., 3, 5, 10) and response modes (`default`, `compact`, `tree_summarize`, `accumulate`) to optimize answer quality
 - **Response mode selector**: User might want to select response mode depending on what they want at that moment from RAG
-- **Conversation memory**: Enable multi-turn context-aware conversations using chat history. Current approach uses ContextChatEngine. Alternative would be CondenceQuestionChatEngine.
+- ~~**Conversation memory**: Enable multi-turn context-aware conversations using chat history.~~ ✅ Done — uses `ContextChatEngine` with per-project persisted `SimpleChatStore`
 - **Export chat history**: Save conversations to JSON or Markdown files
 - **Create eval tests** for the RAG system to evaluate answer quality and citation accuracy between models, chunk sizes, and retrieval strategies
 - **Fix citation engine** to properly handle citations and sources, maybe experiment with custom citation engine instead of llmaindex built in

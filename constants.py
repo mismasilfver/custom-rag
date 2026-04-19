@@ -3,6 +3,14 @@
 # Supported file extensions for document processing
 SUPPORTED_EXTENSIONS = frozenset({".pdf", ".doc", ".docx", ".txt", ".md"})
 
+# Chat engine configuration
+CHAT_TOKEN_LIMIT = 3000
+CHAT_SYSTEM_PROMPT = (
+    "You are a helpful assistant that answers questions exclusively based on "
+    "the provided document context. If the answer is not found in the documents, "
+    "say so clearly. Cite sources using numbered references like [1], [2], etc."
+)
+
 # Prompt template for citation-aware query responses
 CITATION_PROMPT_TEMPLATE = (
     "Context information is below.\n"
