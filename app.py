@@ -115,7 +115,7 @@ def render_project_section():
             if st.button("Create", key="create_proj_btn", use_container_width=True):
                 if new_project_name:
                     if pm.create_project(new_project_name):
-                        st.success(f"Project '{new_project_name}' created!")
+                        st.toast(f"✅ Project '{new_project_name}' created", icon="📁")
                         st.session_state.current_project = new_project_name
                         st.session_state.messages = []
                         # Increment key to force new widget instance (clears field)
@@ -257,6 +257,7 @@ def render_chat_section(engine, chat_history_path):
         if st.button("🗑️ Clear chat history", key="clear_chat"):
             engine.clear_chat_history(chat_history_path)
             st.session_state.messages = []
+            st.toast("🗑️ Chat history cleared", icon="🧹")
             st.rerun()
 
 
@@ -277,13 +278,14 @@ def render_ollama_section(engine):
             if is_running:
                 if st.button("⏹️ Stop", key="stop_ollama", use_container_width=True):
                     engine.stop_ollama()
+                    st.toast("⏹️ Ollama stopped", icon="🛑")
                     st.rerun()
             else:
                 if st.button("▶️ Start", key="start_ollama", use_container_width=True):
                     with st.status("Starting Ollama..."):
                         success = engine.start_ollama()
                     if success:
-                        st.success("Ollama started!")
+                        st.toast("▶️ Ollama started", icon="🚀")
                     else:
                         st.error("Failed to start Ollama")
                     st.rerun()
@@ -313,7 +315,7 @@ def render_ollama_section(engine):
                 )
                 if selected != current_model:
                     engine.set_model(selected)
-                    st.success(f"Switched to {selected}")
+                    st.toast(f"🤖 Switched to {selected}", icon="🔄")
             else:
                 st.warning("No models found. Run `ollama pull` to add models.")
 
@@ -341,8 +343,11 @@ def render_file_section(engine):
                     # Pass tuple of (temp_path, original_filename)
                     file_info.append((tmp.name, uploaded_file.name))
 
-            engine.upload_files(file_info)
-            st.success(f"Uploaded {len(file_info)} file(s)")
+            with st.status(f"Processing {len(file_info)} file(s)...") as status:
+                engine.upload_files(file_info)
+                label = f"✅ Indexed {len(file_info)} file(s)"
+                status.update(label=label, state="complete")
+            st.toast(f"📄 Uploaded {len(file_info)} file(s)", icon="📤")
 
         # List current files with remove buttons (filter out hidden files)
         current_files = [f for f in engine.list_data_files() if not f.startswith(".")]
@@ -374,6 +379,7 @@ def render_file_section(engine):
                         with col_confirm:
                             if st.button("✅ Yes", key=f"confirm_delete_{filename}"):
                                 Path(engine.data_dir, filename).unlink()
+                                st.toast(f"🗑️ Deleted {filename}", icon="🗑️")
                                 st.session_state.confirm_delete_file = None
                                 st.rerun()
                         with col_cancel:
@@ -386,19 +392,21 @@ def render_file_section(engine):
         st.markdown("**Indexing:**")
 
         if st.button("🔄 Reindex", key="reindex_btn", use_container_width=True):
-            with st.status("Reindexing documents..."):
+            with st.status("Reindexing documents...") as status:
                 try:
                     engine.rebuild_index()
-                    st.success("Reindexed!")
+                    status.update(label="✅ Reindex complete", state="complete")
+                    st.toast("🔄 Documents reindexed", icon="✅")
                 except Exception as e:
-                    st.error(f"Error: {e}")
+                    status.update(label=f"❌ Error: {e}", state="error")
 
         if st.button("⚠️ Reset Everything", key="reset_btn", use_container_width=True):
             st.warning("Delete all documents and index?")
             if st.button("Yes, reset", key="confirm_reset", use_container_width=True):
-                with st.status("Resetting..."):
+                with st.status("Resetting...") as status:
                     engine.reset()
-                st.success("Reset complete!")
+                    status.update(label="✅ Reset complete", state="complete")
+                st.toast("⚠️ All data reset", icon="🗑️")
                 st.rerun()
 
 
