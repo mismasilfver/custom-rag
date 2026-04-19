@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 import streamlit as st
+from st_copy import st_copy
 
 from constants import SUPPORTED_EXTENSIONS
 from project_manager import ProjectManager
@@ -184,12 +185,7 @@ def render_chat_section(engine, chat_history_path):
                     with col_msg:
                         st.markdown(message["content"])
                     with col_copy:
-                        st.copy_button(
-                            label="📋",
-                            value=message["content"],
-                            key=f"copy_{i}",
-                            help="Copy response",
-                        )
+                        st_copy(message["content"], key=f"copy_{i}")
                 else:
                     st.markdown(message["content"])
                 # Show timestamp if available
@@ -230,12 +226,7 @@ def render_chat_section(engine, chat_history_path):
                         st.caption(f"🕐 {time_str}")
 
                         # Copy button for this response
-                        st.copy_button(
-                            label="📋",
-                            value=answer,
-                            key="copy_new_response",
-                            help="Copy response",
-                        )
+                        st_copy(answer, key="copy_new_response")
 
                         # Display source references
                         if sources:
@@ -258,12 +249,7 @@ def render_chat_section(engine, chat_history_path):
                         time_str = datetime.now().strftime("%H:%M")
                         st.caption(f"🕐 {time_str}")
                         # Copy button for error message
-                        st.copy_button(
-                            label="📋",
-                            value=error_msg,
-                            key="copy_error",
-                            help="Copy error message",
-                        )
+                        st_copy(error_msg, key="copy_error")
                         st.session_state.messages.append(
                             {
                                 "role": "assistant",
