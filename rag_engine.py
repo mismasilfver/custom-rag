@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import re
 import shutil
 import subprocess
@@ -144,10 +145,13 @@ class RAGEngine:
             return True
 
         logger.info("Starting Ollama server...")
+        env = os.environ.copy()
+        env["OLLAMA_KEEP_ALIVE"] = "30m"
         self._ollama_process = subprocess.Popen(
             ["ollama", "serve"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            env=env,
         )
 
         for _ in range(10):

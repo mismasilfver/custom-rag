@@ -50,6 +50,25 @@ class TestRAGEngineOllamaLifecycle:
             assert result is True
             mock_popen.assert_called_once()
 
+    def test_start_ollama_passes_keep_alive_env_to_subprocess(
+        self, tmp_data_dir, tmp_chroma_dir
+    ):
+        from rag_engine import RAGEngine
+
+        engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
+
+        with patch("rag_engine.subprocess.Popen") as mock_popen:
+            mock_process = MagicMock()
+            mock_process.pid = 12345
+            mock_popen.return_value = mock_process
+
+            with patch.object(engine, "check_ollama", side_effect=[False, True]):
+                with patch("rag_engine.time.sleep"):
+                    engine.start_ollama()
+
+            _, kwargs = mock_popen.call_args
+            assert kwargs["env"]["OLLAMA_KEEP_ALIVE"] == "30m"
+
     def test_start_ollama_returns_true_if_already_running(
         self, tmp_data_dir, tmp_chroma_dir
     ):
