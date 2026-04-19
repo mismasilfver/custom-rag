@@ -155,6 +155,61 @@ def render_source_references(sources):
                 st.markdown("")
 
 
+def _regenerate_response(prompt, chat_container, chat_history_path, engine):
+    """Regenerate response for a given prompt.
+
+    Args:
+        prompt: The original user prompt to re-query
+        chat_container: The Streamlit container for displaying messages
+        chat_history_path: Path to save chat history
+        engine: RAGEngine instance for chat
+    """
+    with chat_container:
+        with st.chat_message("assistant", avatar="🤖"):
+            with st.spinner("Regenerating..."):
+                try:
+                    result = engine.chat(prompt, chat_history_path)
+                    answer = result["answer"]
+                    sources = result["sources"]
+
+                    st.markdown(answer)
+
+                    # Display timestamp
+                    time_str = datetime.now().strftime("%H:%M")
+                    st.caption(f"🕐 {time_str}")
+
+                    # Copy button
+                    copy_button(answer, key="copy_regenerated")
+
+                    # Display source references
+                    if sources:
+                        render_source_references(sources)
+
+                    # Store regenerated response
+                    st.session_state.messages.append(
+                        {
+                            "role": "assistant",
+                            "content": answer,
+                            "sources": sources,
+                            "timestamp": datetime.now(),
+                            "prompt": prompt,
+                        }
+                    )
+                    st.toast("✅ Response regenerated")
+                except Exception as e:
+                    error_msg = f"❌ Error: {str(e)}"
+                    st.error(error_msg)
+                    st.session_state.messages.append(
+                        {
+                            "role": "assistant",
+                            "content": error_msg,
+                            "sources": [],
+                            "timestamp": datetime.now(),
+                            "prompt": prompt,
+                        }
+                    )
+
+
 def render_chat_section(engine, chat_history_path):
     """Render the chat interface with conversation history and source citations."""
     st.divider()
@@ -181,11 +236,28 @@ def render_chat_section(engine, chat_history_path):
             with st.chat_message(message["role"], avatar=avatar):
                 # Copy button for assistant messages
                 if message["role"] == "assistant":
-                    col_msg, col_copy = st.columns([10, 1])
+                    col_msg, col_copy, col_regen = st.columns([10, 1, 1])
                     with col_msg:
                         st.markdown(message["content"])
                     with col_copy:
                         copy_button(message["content"], key=f"copy_{i}")
+                    with col_regen:
+                        # Regenerate button (only if prompt is tracked)
+                        if "prompt" in message:
+                            if st.button(
+                                "🔄", key=f"regen_{i}", help="Regenerate response"
+                            ):
+                                # Remove this and subsequent messages
+                                st.session_state.messages = st.session_state.messages[
+                                    :i
+                                ]
+                                # Re-query with original prompt
+                                _regenerate_response(
+                                    message["prompt"],
+                                    chat_container,
+                                    chat_history_path,
+                                    engine,
+                                )
                 else:
                     st.markdown(message["content"])
                 # Show timestamp if available
@@ -234,13 +306,14 @@ def render_chat_section(engine, chat_history_path):
                             if sources_contain_garbled(sources):
                                 st.session_state.garbled_detected = True
 
-                        # Store assistant response in history with timestamp
+                        # Store assistant response in history with timestamp and prompt
                         st.session_state.messages.append(
                             {
                                 "role": "assistant",
                                 "content": answer,
                                 "sources": sources,
                                 "timestamp": datetime.now(),
+                                "prompt": prompt,
                             }
                         )
                     except Exception as e:
@@ -256,6 +329,7 @@ def render_chat_section(engine, chat_history_path):
                                 "content": error_msg,
                                 "sources": [],
                                 "timestamp": datetime.now(),
+                                "prompt": prompt,
                             }
                         )
 
