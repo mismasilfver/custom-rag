@@ -242,6 +242,8 @@ def render_chat_section(engine, chat_history_path):
                     with col_copy:
                         copy_button(message["content"], key=f"copy_{i}")
                     with col_regen:
+                        # DEBUG: Show if prompt is in message
+                        st.caption(f"prompt: {'prompt' in message}")
                         # Regenerate button (only if prompt is tracked)
                         if "prompt" in message:
                             if st.button(
