@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 import time
 import urllib.request
+from datetime import datetime
 from pathlib import Path
 
 import chromadb
@@ -555,6 +556,82 @@ class RAGEngine:
         if history_file.exists():
             history_file.unlink()
             logger.info(f"Deleted chat history file: {chat_history_path}")
+
+    def export_conversation_to_markdown(
+        self, messages, include_sources=False, project_name=None
+    ):
+        """Export conversation messages as markdown string.
+
+        Args:
+            messages: List of message dicts with 'role', 'content', 'timestamp',
+                     and optional 'sources' keys.
+            include_sources: Whether to include source references in output.
+            project_name: Optional project name for the title.
+
+        Returns:
+            Markdown formatted string.
+        """
+        if not messages:
+            return ""
+
+        lines = []
+
+        # Title with project name and timestamp
+        project = project_name or "export"
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        lines.append(f"# Chat Export - {project} - {now}")
+        lines.append("")
+        lines.append("---")
+        lines.append("")
+
+        for msg in messages:
+            role = msg.get("role", "unknown")
+            content = msg.get("content", "")
+            timestamp = msg.get("timestamp")
+
+            if role == "user":
+                lines.append(f"**User:** {content}")
+            elif role == "assistant":
+                lines.append(f"**Assistant:** {content}")
+            else:
+                lines.append(f"**{role.capitalize()}:** {content}")
+
+            lines.append("")
+
+            # Add timestamp if available
+            if timestamp:
+                if isinstance(timestamp, datetime):
+                    time_str = timestamp.strftime("%H:%M")
+                else:
+                    time_str = str(timestamp)
+                lines.append(f"*{time_str}*")
+                lines.append("")
+
+            # Add sources if requested and available
+            if include_sources and role == "assistant":
+                sources = msg.get("sources", [])
+                if sources:
+                    lines.append("**Sources:**")
+                    for src in sources:
+                        num = src.get("number", 0)
+                        file_name = src.get("file_name", "Unknown")
+                        page_label = src.get("page_label")
+                        snippet = src.get("snippet", "")
+
+                        if page_label:
+                            lines.append(f"- [{num}] {file_name}, Page {page_label}")
+                        else:
+                            lines.append(f"- [{num}] {file_name}")
+
+                        if snippet:
+                            lines.append(f"  > {snippet}")
+
+                    lines.append("")
+
+            lines.append("---")
+            lines.append("")
+
+        return "\n".join(lines)
 
     # ── Reset ─────────────────────────────────────────────────────────
 
