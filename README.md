@@ -19,6 +19,7 @@ Notice, you're still stopped by ollama's internal guardrails when trying to quer
 - **Polished Chat UI**: Message timestamps (HH:MM), copy button (📋) on every assistant response, and regenerate button (🔄) to re-query the LLM for a new answer
 - **Interactive Feedback**: Toast notifications for all actions (file upload, delete, project creation, clear chat), status indicators for long-running operations
 - **Visual Layout**: Bordered containers, metric displays, custom avatars (🧑‍💻/🤖), and themed colour palette
+- **Export Conversations**: Download chat history as Markdown with configurable source reference inclusion, auto-generated filename with project name and timestamp
 
 ## Original Source
 
@@ -41,6 +42,7 @@ The following changes have been made to the original tutorial code:
 11. **Source Citations**: Added `query_with_sources()` method with Perplexity-style numbered references [1], [2], etc. LLM is prompted to cite sources, and UI displays expandable "Source references" panel with filename, page number (PDFs), and cleaned text snippets
 12. **Text Sanitization**: Added `_clean_text_for_display()` helper to remove binary/garbage characters from PDF content extraction, ensuring readable source snippets
 13. **Conversation Memory**: Replaced stateless `query_with_sources()` with a `ContextChatEngine` (`chat_mode="context"`) backed by `ChatMemoryBuffer` (token limit 3000) and a `SimpleChatStore` persisted to `<project>/chat_history.json`. Each message is written to disk after the LLM responds, so chat history survives page reloads. `load_chat_messages()` rehydrates the Streamlit display list on startup. History is scoped per-project and cleared on project switch or explicit clear
+14. **Export Conversations**: Added `export_conversation_to_markdown()` method to export chat history as Markdown. UI includes export button next to "Clear chat", optional source reference inclusion, and browser download with auto-generated filename
 
 ## Dependencies
 
@@ -167,6 +169,7 @@ Features in the UI:
 - **Message timestamps**: Each message shows HH:MM time
 - **Copy responses**: 📋 button on every assistant message to copy to clipboard
 - **Regenerate response**: 🔄 button to re-query the LLM for a fresh answer
+- **Export conversations**: 💾 button to download chat history as Markdown, with optional source reference inclusion
 - **Toast notifications**: Immediate feedback for uploads, deletions, project creation, and chat actions
 - Clear chat history anytime
 
@@ -284,7 +287,7 @@ Potential improvements and experiments to explore:
 - **Response mode selector**: User might want to select response mode depending on what they want at that moment from RAG
 - ~~**Conversation memory**: Enable multi-turn context-aware conversations using chat history.~~ ✅ Done — uses `ContextChatEngine` with per-project persisted `SimpleChatStore`
 - ~~**Improve the UI with better error handling and user feedback**~~ ✅ Done — toast notifications, status indicators, timestamps, copy & regenerate buttons
-- **Export chat history**: Save conversations to JSON or Markdown files
+- ~~**Export chat history**: Save conversations to JSON or Markdown files~~ ✅ Done — conversations can be exported as Markdown with configurable source reference inclusion
 - **Create eval tests** for the RAG system to evaluate answer quality and citation accuracy between models, chunk sizes, and retrieval strategies
 - **Fix citation engine** to properly handle citations and sources, maybe experiment with custom citation engine instead of llmaindex built in
 
