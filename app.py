@@ -1,8 +1,10 @@
 import logging
 import tempfile
+from datetime import datetime
 from pathlib import Path
 
 import streamlit as st
+from st_copy import copy_button
 
 from constants import SUPPORTED_EXTENSIONS
 from project_manager import ProjectManager
@@ -11,13 +13,15 @@ from rag_engine import RAGEngine, sources_contain_garbled
 logger = logging.getLogger(__name__)
 
 st.set_page_config(
-    page_title="RAG UI",
+    page_title="RAG Document Q&A",
     page_icon="📚",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-st.title("📚 RAG Document Q&A")
+with st.container(border=True):
+    st.title("📚 RAG Document Q&A")
+    st.caption("Query your documents using local LLMs")
 
 # Supported file types for the uploader (derived from constants, .md excluded)
 SUPPORTED_TYPES = [
@@ -57,49 +61,74 @@ def get_engine(project_name):
     return RAGEngine(data_dir=paths["data_dir"], chroma_dir=paths["chroma_dir"])
 
 
+def get_chat_history_path(project_name):
+    """Return the chat history JSON path for a project."""
+    paths = pm.get_project_paths(project_name)
+    return paths["chat_history_path"] if paths else None
+
+
 def render_project_section():
     """Render the project selection and creation UI."""
-    st.sidebar.header("📁 Projects")
+    with st.sidebar.container(border=True):
+        st.subheader("📁 Projects")
 
-    projects = pm.list_projects()
+        projects = pm.list_projects()
 
-    # Project selector
-    if not projects:
-        st.sidebar.warning("No projects found.")
-        return
+        # Project selector
+        if not projects:
+            st.warning("No projects found.")
+            return
 
-    # Ensure current project is valid
-    if st.session_state.current_project not in projects:
-        st.session_state.current_project = projects[0]
+        # Display project count metric
+        st.metric("Total Projects", len(projects))
 
-    selected_project = st.sidebar.selectbox(
-        "Select Project",
-        projects,
-        index=projects.index(st.session_state.current_project),
-    )
+        # Ensure current project is valid
+        if st.session_state.current_project not in projects:
+            st.session_state.current_project = projects[0]
 
-    # Handle project switch
-    if selected_project != st.session_state.current_project:
-        st.session_state.current_project = selected_project
-        st.session_state.messages = []  # Clear chat history on switch
-        st.rerun()
+        selected_project = st.selectbox(
+            "Select Project",
+            projects,
+            index=projects.index(st.session_state.current_project),
+            label_visibility="collapsed",
+        )
 
-    # Create new project
-    with st.sidebar.expander("➕ New Project"):
-        new_project_name = st.text_input("Project Name", key="new_proj_name")
-        if st.button("Create", key="create_proj_btn"):
-            if new_project_name:
-                if pm.create_project(new_project_name):
-                    st.success(f"Project '{new_project_name}' created!")
-                    st.session_state.current_project = new_project_name
-                    st.session_state.messages = []
-                    st.rerun()
+        # Handle project switch
+        if selected_project != st.session_state.current_project:
+            old_engine = get_engine(st.session_state.current_project)
+            old_path = get_chat_history_path(st.session_state.current_project)
+            if old_engine and old_path:
+                old_engine.clear_chat_history(old_path)
+            st.session_state.current_project = selected_project
+            st.session_state.messages = []  # Clear chat history on switch
+            st.rerun()
+
+        # Create new project
+        with st.expander("➕ New Project", expanded=False):
+            # Use a counter to force widget reset after creation
+            if "new_proj_key" not in st.session_state:
+                st.session_state.new_proj_key = 0
+
+            new_project_name = st.text_input(
+                "Project Name",
+                key=f"new_proj_name_{st.session_state.new_proj_key}",
+                placeholder="Enter project name...",
+            )
+            if st.button("Create", key="create_proj_btn", use_container_width=True):
+                if new_project_name:
+                    if pm.create_project(new_project_name):
+                        st.toast(f"✅ Project '{new_project_name}' created", icon="📁")
+                        st.session_state.current_project = new_project_name
+                        st.session_state.messages = []
+                        # Increment key to force new widget instance (clears field)
+                        st.session_state.new_proj_key += 1
+                        st.rerun()
+                    else:
+                        st.error("Invalid name or project already exists.")
                 else:
-                    st.error("Invalid name or project already exists.")
-            else:
-                st.warning("Please enter a name.")
+                    st.warning("Please enter a name.")
 
-    st.sidebar.markdown("---")
+    st.sidebar.divider()
 
 
 def render_source_references(sources):
@@ -108,63 +137,65 @@ def render_source_references(sources):
     Args:
         sources: List of source dicts with number, file_name, page_label, snippet
     """
-    with st.expander("📚 Source references"):
-        for source in sources:
-            page_info = (
-                f", Page {source['page_label']}" if source.get("page_label") else ""
-            )
-            label = f"**[{source['number']}] {source['file_name']}**{page_info}"
-            st.markdown(label)
-            st.caption(source["snippet"])
-            st.markdown("---")
+    with st.expander(f"📚 Source references ({len(sources)})"):
+        for i, source in enumerate(sources):
+            with st.container(border=True):
+                page_info = (
+                    f", Page {source['page_label']}" if source.get("page_label") else ""
+                )
+                label = f"**[{source['number']}] {source['file_name']}**{page_info}"
+                st.markdown(label)
+                snippet = source["snippet"]
+                if len(snippet) > 200:
+                    display_snippet = snippet[:200] + "..."
+                else:
+                    display_snippet = snippet
+                st.caption(display_snippet)
+            if i < len(sources) - 1:
+                st.markdown("")
 
 
-def render_chat_section(engine):
-    """Render the chat interface with conversation history and source citations."""
-    st.markdown("---")
-    st.subheader("💬 Chat with your documents")
+def _regenerate_response(prompt, chat_container, chat_history_path, engine):
+    """Regenerate response for a given prompt.
 
-    # Display chat history
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-            # Show source references in expandable section if available
-            if "sources" in message and message["sources"]:
-                render_source_references(message["sources"])
-
-    # Chat input
-    if prompt := st.chat_input("Ask a question about your documents..."):
-        # Add user message to history
-        st.session_state.messages.append({"role": "user", "content": prompt})
-
-        # Display user message
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
-        # Generate and display assistant response
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
+    Args:
+        prompt: The original user prompt to re-query
+        chat_container: The Streamlit container for displaying messages
+        chat_history_path: Path to save chat history
+        engine: RAGEngine instance for chat
+    """
+    with chat_container:
+        with st.chat_message("assistant", avatar="🤖"):
+            with st.spinner("Regenerating..."):
                 try:
-                    result = engine.query_with_sources(prompt)
+                    result = engine.chat(prompt, chat_history_path)
                     answer = result["answer"]
                     sources = result["sources"]
 
                     st.markdown(answer)
 
+                    # Display timestamp
+                    time_str = datetime.now().strftime("%H:%M")
+                    st.caption(f"🕐 {time_str}")
+
+                    # Copy button
+                    copy_button(answer, key="copy_regenerated")
+
                     # Display source references
                     if sources:
                         render_source_references(sources)
-                        if sources_contain_garbled(sources):
-                            st.session_state.garbled_detected = True
 
-                    # Store assistant response in history
+                    # Store regenerated response
                     st.session_state.messages.append(
                         {
                             "role": "assistant",
                             "content": answer,
                             "sources": sources,
+                            "timestamp": datetime.now(),
+                            "prompt": prompt,
                         }
                     )
+                    st.toast("✅ Response regenerated")
                 except Exception as e:
                     error_msg = f"❌ Error: {str(e)}"
                     st.error(error_msg)
@@ -173,8 +204,133 @@ def render_chat_section(engine):
                             "role": "assistant",
                             "content": error_msg,
                             "sources": [],
+                            "timestamp": datetime.now(),
+                            "prompt": prompt,
                         }
                     )
+
+
+def render_chat_section(engine, chat_history_path):
+    """Render the chat interface with conversation history and source citations."""
+    st.divider()
+    st.subheader("💬 Chat with your documents")
+
+    # Show onboarding hint only when there is no conversation yet
+    if not st.session_state.messages:
+        with st.container(border=True):
+            st.info(
+                "**Chat history is preserved across page reloads.** "
+                "Each message you send is saved to your project folder, so you can "
+                "pick up right where you left off after refreshing the browser. "
+                'Follow-up questions like *"tell me more"* or *"expand on point 2"* '
+                "work naturally — the assistant always has the full conversation "
+                "context. Use **🗑️ Clear chat history** below to start a fresh "
+                "conversation."
+            )
+
+    # Display chat history in a scrollable container
+    chat_container = st.container(height=400, border=True)
+    with chat_container:
+        for i, message in enumerate(st.session_state.messages):
+            avatar = "🧑‍💻" if message["role"] == "user" else "🤖"
+            with st.chat_message(message["role"], avatar=avatar):
+                # Copy button for assistant messages
+                if message["role"] == "assistant":
+                    col_msg, col_buttons = st.columns([8, 2])
+                    with col_msg:
+                        st.markdown(message["content"])
+                    with col_buttons:
+                        copy_button(message["content"], key=f"copy_{i}")
+                        # Regenerate button (only if prompt is tracked)
+                        if "prompt" in message:
+                            if st.button(
+                                "🔄", key=f"regen_{i}", help="Regenerate response"
+                            ):
+                                # Remove this and subsequent messages
+                                st.session_state.messages = st.session_state.messages[
+                                    :i
+                                ]
+                                # Re-query with original prompt
+                                _regenerate_response(
+                                    message["prompt"],
+                                    chat_container,
+                                    chat_history_path,
+                                    engine,
+                                )
+                else:
+                    st.markdown(message["content"])
+                # Show timestamp if available
+                if "timestamp" in message:
+                    time_str = message["timestamp"].strftime("%H:%M")
+                    st.caption(f"🕐 {time_str}")
+                # Show source references in expandable section if available
+                if "sources" in message and message["sources"]:
+                    render_source_references(message["sources"])
+
+    # Chat input - must be outside container to stay at bottom
+    if prompt := st.chat_input("Ask a question about your documents..."):
+        # Add user message to history with timestamp
+        st.session_state.messages.append(
+            {"role": "user", "content": prompt, "timestamp": datetime.now()}
+        )
+
+        # Display user message
+        with chat_container:
+            with st.chat_message("user", avatar="🧑‍💻"):
+                st.markdown(prompt)
+                time_str = datetime.now().strftime("%H:%M")
+                st.caption(f"🕐 {time_str}")
+
+        # Generate and display assistant response
+        with chat_container:
+            with st.chat_message("assistant", avatar="🤖"):
+                with st.spinner("Thinking..."):
+                    try:
+                        result = engine.chat(prompt, chat_history_path)
+                        answer = result["answer"]
+                        sources = result["sources"]
+
+                        st.markdown(answer)
+
+                        # Display timestamp for this response
+                        time_str = datetime.now().strftime("%H:%M")
+                        st.caption(f"🕐 {time_str}")
+
+                        # Copy button for this response
+                        copy_button(answer, key="copy_new_response")
+
+                        # Display source references
+                        if sources:
+                            render_source_references(sources)
+                            if sources_contain_garbled(sources):
+                                st.session_state.garbled_detected = True
+
+                        # Store assistant response in history with timestamp and prompt
+                        st.session_state.messages.append(
+                            {
+                                "role": "assistant",
+                                "content": answer,
+                                "sources": sources,
+                                "timestamp": datetime.now(),
+                                "prompt": prompt,
+                            }
+                        )
+                    except Exception as e:
+                        error_msg = f"❌ Error: {str(e)}"
+                        st.error(error_msg)
+                        time_str = datetime.now().strftime("%H:%M")
+                        st.caption(f"🕐 {time_str}")
+                        # Copy button for error message
+                        copy_button(error_msg, key="copy_error")
+                        st.session_state.messages.append(
+                            {
+                                "role": "assistant",
+                                "content": error_msg,
+                                "sources": [],
+                                "timestamp": datetime.now(),
+                                "prompt": prompt,
+                            }
+                        )
 
     # Garbled sources warning + reindex offer
     if st.session_state.get("garbled_detected"):
@@ -203,149 +359,159 @@ def render_chat_section(engine):
     # Clear chat button
     if st.session_state.messages:
         if st.button("🗑️ Clear chat history", key="clear_chat"):
+            engine.clear_chat_history(chat_history_path)
             st.session_state.messages = []
+            st.toast("🗑️ Chat history cleared", icon="🧹")
             st.rerun()
 
 
 def render_ollama_section(engine):
     """Render the Ollama management section in the sidebar."""
-    st.sidebar.header("🤖 Ollama")
+    with st.sidebar.container(border=True):
+        st.subheader("🤖 Ollama")
 
-    is_running = engine.check_ollama()
+        is_running = engine.check_ollama()
 
-    col1, col2 = st.sidebar.columns([3, 1])
-    with col1:
-        st.write("**Status:**", ":green[Running]" if is_running else ":red[Stopped]")
+        # Status display with color-coded indicator
+        status_emoji = "🟢" if is_running else "🔴"
+        status_text = "Running" if is_running else "Stopped"
+        st.markdown(f"**Status:** {status_emoji} {status_text}")
 
-    with col2:
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if is_running:
+                if st.button("⏹️ Stop", key="stop_ollama", use_container_width=True):
+                    engine.stop_ollama()
+                    st.toast("⏹️ Ollama stopped", icon="🛑")
+                    st.rerun()
+            else:
+                if st.button("▶️ Start", key="start_ollama", use_container_width=True):
+                    with st.status("Starting Ollama..."):
+                        success = engine.start_ollama()
+                    if success:
+                        st.toast("▶️ Ollama started", icon="🚀")
+                    else:
+                        st.error("Failed to start Ollama")
+                    st.rerun()
+
         if is_running:
-            if st.button("⏹️ Stop", key="stop_ollama"):
-                engine.stop_ollama()
-                st.rerun()
-        else:
-            if st.button("▶️ Start", key="start_ollama"):
-                with st.spinner("Starting Ollama..."):
-                    success = engine.start_ollama()
-                if success:
-                    st.success("Ollama started!")
-                else:
-                    st.error("Failed to start Ollama")
-                st.rerun()
-
-    if is_running:
-        models = engine.list_models()
-        if models:
-            current_model = engine.model_name
-            current_index = (
-                models.index(current_model) if current_model in models else None
-            )
-            if current_index is None:
-                st.sidebar.warning(
-                    f"Configured model **{current_model}** not found in Ollama. "
-                    "Select a model below."
+            models = engine.list_models()
+            if models:
+                current_model = engine.model_name
+                current_index = (
+                    models.index(current_model) if current_model in models else None
                 )
-                current_index = 0
-            selected = st.sidebar.selectbox(
-                "**Model:**",
-                models,
-                index=current_index,
-            )
-            if selected != current_model:
-                engine.set_model(selected)
-                st.sidebar.success(f"Switched to {selected}")
-        else:
-            st.sidebar.warning("No models found. Run `ollama pull` to add models.")
+                if current_index is None:
+                    st.warning(
+                        f"Configured model **{current_model}** not found. "
+                        "Select a model below."
+                    )
+                    current_index = 0
+
+                # Display model count metric
+                st.metric("Available Models", len(models))
+
+                selected = st.selectbox(
+                    "Select Model",
+                    models,
+                    index=current_index,
+                    label_visibility="collapsed",
+                )
+                if selected != current_model:
+                    engine.set_model(selected)
+                    st.toast(f"🤖 Switched to {selected}", icon="🔄")
+            else:
+                st.warning("No models found. Run `ollama pull` to add models.")
 
 
 def render_file_section(engine):
     """Render the file management section in the sidebar."""
-    st.sidebar.header("📄 Documents")
+    with st.sidebar.container(border=True):
+        st.subheader("📄 Documents")
 
-    # File uploader
-    uploaded_files = st.sidebar.file_uploader(
-        "Upload files",
-        type=SUPPORTED_TYPES,
-        accept_multiple_files=True,
-        key="file_uploader",
-    )
+        # File uploader
+        uploaded_files = st.file_uploader(
+            "Upload files",
+            type=SUPPORTED_TYPES,
+            accept_multiple_files=True,
+            key="file_uploader",
+        )
 
-    if uploaded_files:
-        file_paths = []
-        for uploaded_file in uploaded_files:
-            # Save to temp location and upload
-            suffix = f"_{uploaded_file.name}"
-            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-                tmp.write(uploaded_file.getvalue())
-                file_paths.append(tmp.name)
+        if uploaded_files:
+            file_info = []
+            for uploaded_file in uploaded_files:
+                # Save to temp location and upload
+                suffix = f"_{uploaded_file.name}"
+                with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                    tmp.write(uploaded_file.getvalue())
+                    # Pass tuple of (temp_path, original_filename)
+                    file_info.append((tmp.name, uploaded_file.name))
 
-        engine.upload_files(file_paths)
-        st.sidebar.success(f"Uploaded {len(file_paths)} file(s)")
-        st.rerun()
+            with st.status(f"Processing {len(file_info)} file(s)...") as status:
+                engine.upload_files(file_info)
+                label = f"✅ Indexed {len(file_info)} file(s)"
+                status.update(label=label, state="complete")
+            st.toast(f"📄 Uploaded {len(file_info)} file(s)", icon="📤")
 
-    # List current files with remove buttons (filter out hidden files like .gitkeep)
-    st.sidebar.markdown("**Current files:**")
-    current_files = [f for f in engine.list_data_files() if not f.startswith(".")]
+        # List current files with remove buttons (filter out hidden files)
+        current_files = [f for f in engine.list_data_files() if not f.startswith(".")]
 
-    # Initialize session state for delete confirmation
-    if "confirm_delete_file" not in st.session_state:
-        st.session_state.confirm_delete_file = None
+        # Display file count metric
+        st.metric("Documents", len(current_files))
 
-    if not current_files:
-        st.sidebar.caption("No documents in data folder")
-    else:
-        for filename in current_files:
-            col1, col2 = st.sidebar.columns([4, 1])
-            with col1:
-                st.caption(f"📄 {filename}")
-            with col2:
-                if st.button("🗑️", key=f"remove_{filename}"):
-                    st.session_state.confirm_delete_file = filename
-                    st.rerun()
+        # Initialize session state for delete confirmation
+        if "confirm_delete_file" not in st.session_state:
+            st.session_state.confirm_delete_file = None
 
-            # Show confirmation if this file is pending deletion
-            if st.session_state.confirm_delete_file == filename:
-                st.sidebar.warning(f"Delete **{filename}**?")
-                col_confirm, col_cancel = st.sidebar.columns(2)
-                with col_confirm:
-                    if st.button("✅ Yes", key=f"confirm_delete_{filename}"):
-                        Path(engine.data_dir, filename).unlink()
-                        st.session_state.confirm_delete_file = None
-                        st.rerun()
-                with col_cancel:
-                    if st.button("❌ No", key=f"cancel_delete_{filename}"):
-                        st.session_state.confirm_delete_file = None
-                        st.rerun()
+        if not current_files:
+            st.caption("No documents uploaded yet")
+        else:
+            with st.container(height=200):
+                for filename in current_files:
+                    col1, col2 = st.columns([4, 1])
+                    with col1:
+                        st.caption(f"📄 {filename}")
+                    with col2:
+                        if st.button("🗑️", key=f"remove_{filename}"):
+                            st.session_state.confirm_delete_file = filename
+                            st.rerun()
 
-    # Indexing actions
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("**Indexing:**")
+                    # Show confirmation if this file is pending deletion
+                    if st.session_state.confirm_delete_file == filename:
+                        st.warning(f"Delete **{filename}**?")
+                        col_confirm, col_cancel = st.columns(2)
+                        with col_confirm:
+                            if st.button("✅ Yes", key=f"confirm_delete_{filename}"):
+                                Path(engine.data_dir, filename).unlink()
+                                st.toast(f"🗑️ Deleted {filename}", icon="🗑️")
+                                st.session_state.confirm_delete_file = None
+                                st.rerun()
+                        with col_cancel:
+                            if st.button("❌ No", key=f"cancel_delete_{filename}"):
+                                st.session_state.confirm_delete_file = None
+                                st.rerun()
 
-    col1, col2 = st.sidebar.columns(2)
-    with col1:
-        if st.button("🔍 Index", key="index_btn"):
-            with st.spinner("Indexing documents..."):
-                try:
-                    engine.ensure_index()
-                    st.sidebar.success("Indexed!")
-                except Exception as e:
-                    st.sidebar.error(f"Error: {e}")
+        # Indexing actions
+        st.divider()
+        st.markdown("**Indexing:**")
 
-    with col2:
-        if st.button("🔄 Reindex", key="reindex_btn"):
-            with st.spinner("Reindexing documents..."):
+        if st.button("🔄 Reindex", key="reindex_btn", use_container_width=True):
+            with st.status("Reindexing documents...") as status:
                 try:
                     engine.rebuild_index()
-                    st.sidebar.success("Reindexed!")
+                    status.update(label="✅ Reindex complete", state="complete")
+                    st.toast("🔄 Documents reindexed", icon="✅")
                 except Exception as e:
-                    st.sidebar.error(f"Error: {e}")
+                    status.update(label=f"❌ Error: {e}", state="error")
 
-    if st.button("⚠️ Reset Everything", key="reset_btn"):
-        st.sidebar.warning("This will delete all documents and index. Are you sure?")
-        if st.button("Yes, reset everything", key="confirm_reset"):
-            with st.spinner("Resetting..."):
-                engine.reset()
-            st.sidebar.success("Reset complete!")
-            st.rerun()
+        if st.button("⚠️ Reset Everything", key="reset_btn", use_container_width=True):
+            st.warning("Delete all documents and index?")
+            if st.button("Yes, reset", key="confirm_reset", use_container_width=True):
+                with st.status("Resetting...") as status:
+                    engine.reset()
+                    status.update(label="✅ Reset complete", state="complete")
+                st.toast("⚠️ All data reset", icon="🗑️")
+                st.rerun()
 
 
 def main():
@@ -357,17 +523,31 @@ def main():
             return
 
         render_ollama_section(engine)
-        st.sidebar.markdown("---")
+        st.sidebar.divider()
         render_file_section(engine)
 
         if not engine.check_ollama():
             st.error("🚫 Ollama is not running. Please start it from the sidebar.")
             return
 
+        chat_history_path = get_chat_history_path(st.session_state.current_project)
+
+        # Rehydrate display messages from disk after a page reload
+        if not st.session_state.messages and chat_history_path:
+            loaded = engine.load_chat_messages(chat_history_path)
+            # Reconstruct prompt field by pairing each assistant message
+            # with the content of the preceding user message
+            for idx, msg in enumerate(loaded):
+                if msg["role"] == "assistant" and idx > 0:
+                    prev = loaded[idx - 1]
+                    if prev["role"] == "user":
+                        msg["prompt"] = prev["content"]
+            st.session_state.messages = loaded
+
         # Check if documents are indexed
         try:
             engine.ensure_index()
-            render_chat_section(engine)
+            render_chat_section(engine, chat_history_path)
         except Exception:
             st.warning(
                 "📄 Add documents and click **Index** in the sidebar to get started."

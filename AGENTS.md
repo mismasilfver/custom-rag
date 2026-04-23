@@ -36,6 +36,8 @@
 - Explain the reasoning behind changes, not just what changed
 - Never delete or modify tests without explicit direction
 - Use Conventional Commits style for commit messages
+- Never push to remote repository without explicit approval from user
+- Never use git add .
 
 ## Communication
 - Be direct and concise
@@ -118,6 +120,7 @@
 - **No Hardcoded Secrets**: Never commit API keys or credentials
 - **File Validation**: Reject unsupported file types in upload_files()
 - **Safe Deletion**: Confirmation dialogs before destructive operations (reset, file delete)
+- **Do not add new dependencies** without explicit user approval. Give references to each dependency documentation in internet.
 
 ## Documentation Requirements
 - **Docstrings**: All public methods must have docstrings explaining purpose and behavior

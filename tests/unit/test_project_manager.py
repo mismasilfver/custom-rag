@@ -170,6 +170,17 @@ class TestProjectManager:
         assert paths["data_dir"] == expected_data_dir
         assert paths["chroma_dir"] == expected_chroma_dir
 
+    def test_get_project_paths_includes_chat_history_path(self, tmp_projects_dir):
+        pm = ProjectManager(base_dir=tmp_projects_dir)
+        pm.create_project("my_project")
+
+        paths = pm.get_project_paths("my_project")
+
+        expected_chat_history_path = str(
+            Path(tmp_projects_dir) / "my_project" / "chat_history.json"
+        )
+        assert paths["chat_history_path"] == expected_chat_history_path
+
     def test_get_project_paths_nonexistent(self, tmp_projects_dir):
         pm = ProjectManager(base_dir=tmp_projects_dir)
         assert pm.get_project_paths("does_not_exist") is None

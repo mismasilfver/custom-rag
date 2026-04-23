@@ -144,6 +144,7 @@ class ProjectManager:
         return {
             "data_dir": str(project_dir / "data"),
             "chroma_dir": str(project_dir / "chroma_db"),
+            "chat_history_path": str(project_dir / "chat_history.json"),
         }
 
     def migrate_legacy_data(

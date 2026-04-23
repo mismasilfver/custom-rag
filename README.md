@@ -10,12 +10,15 @@ Notice, you're still stopped by ollama's internal guardrails when trying to quer
 - **Web-based UI**: Streamlit interface for document management, indexing, and chat
 - **Ollama Integration**: Start/stop Ollama server directly from the UI, with model selection
 - **File Management**: Upload documents via drag-and-drop, delete with confirmation dialogs
-- **Chat Interface**: Conversational Q&A with conversation history and clear chat option
+- **Conversation Memory**: Multi-turn context-aware chat powered by LlamaIndex `ContextChatEngine` with `ChatMemoryBuffer`. Chat history is persisted per-project to `chat_history.json` and survives browser reloads. Follow-up questions like *"tell me more"* work naturally — the LLM always sees prior turns
 - **Local Document Processing**: Load and index PDF, Word, and text documents from a local directory
 - **Persistent Embeddings**: ChromaDB stores embeddings locally, avoiding reprocessing on subsequent runs
 - **Interactive Query Mode**: Ask questions interactively or run predefined test queries
 - **Comprehensive Logging**: Detailed logging for debugging and observability
 - **Memory Efficient**: Designed to work with consumer hardware (tested on MacBook with 36GB RAM)
+- **Polished Chat UI**: Message timestamps (HH:MM), copy button (📋) on every assistant response, and regenerate button (🔄) to re-query the LLM for a new answer
+- **Interactive Feedback**: Toast notifications for all actions (file upload, delete, project creation, clear chat), status indicators for long-running operations
+- **Visual Layout**: Bordered containers, metric displays, custom avatars (🧑‍💻/🤖), and themed colour palette
 
 ## Original Source
 
@@ -32,11 +35,12 @@ The following changes have been made to the original tutorial code:
 4. **ChromaDB Persistence**: Implemented persistent storage of embeddings to `./chroma_db`, preventing regeneration on every run
 5. **CLI Arguments**: Added command-line flags for `--reindex` (force reindexing), `--interactive` (interactive mode), `--reset` (reset data), `--project` (target specific project), and `--list` (show available projects)
 6. **Refactored Architecture**: Extracted core logic into `RAGEngine` class with lazy initialization - no side effects on import
-7. **Test Suite**: Comprehensive unit and integration tests (46 tests) using pytest
+7. **Test Suite**: Comprehensive unit and integration tests (153 tests) using pytest
 8. **Streamlit Web UI**: Full-featured web interface (`app.py`) with sidebar for Ollama management, file upload, indexing controls, and chat interface
 9. **Privacy-First**: Telemetry disabled via `.streamlit/config.toml` - no usage stats sent to external servers
 11. **Source Citations**: Added `query_with_sources()` method with Perplexity-style numbered references [1], [2], etc. LLM is prompted to cite sources, and UI displays expandable "Source references" panel with filename, page number (PDFs), and cleaned text snippets
 12. **Text Sanitization**: Added `_clean_text_for_display()` helper to remove binary/garbage characters from PDF content extraction, ensuring readable source snippets
+13. **Conversation Memory**: Replaced stateless `query_with_sources()` with a `ContextChatEngine` (`chat_mode="context"`) backed by `ChatMemoryBuffer` (token limit 3000) and a `SimpleChatStore` persisted to `<project>/chat_history.json`. Each message is written to disk after the LLM responds, so chat history survives page reloads. `load_chat_messages()` rehydrates the Streamlit display list on startup. History is scoped per-project and cleared on project switch or explicit clear
 
 ## Dependencies
 
@@ -49,6 +53,7 @@ The following changes have been made to the original tutorial code:
 | `chromadb>=0.5.0` | Chroma vector database for embedding storage |
 | `pypdf>=4.0` | PDF text extraction library |
 | `streamlit>=1.30.0` | Web UI framework for interactive interface |
+| `st-copy>=0.1.0` | Copy-to-clipboard button component for chat responses |
 
 ## Supported Document Types
 
@@ -56,6 +61,7 @@ The RAG system supports the following document formats:
 - PDF (`.pdf`)
 - Microsoft Word (`.doc`, `.docx`)
 - Plain text (`.txt`)
+- Markdown (`.md`)
 
 ## Installation
 
@@ -133,10 +139,10 @@ open htmlcov/index.html
   - HTML: `htmlcov/index.html`
   - XML: `coverage.xml`
 
-**Current Coverage**: 83% across all modules
-- `rag_engine.py`: 80% coverage
-- `project_manager.py`: 88% coverage
+**Current Coverage**: 99.4% across all modules
 - `constants.py`: 100% coverage
+- `project_manager.py`: 100% coverage
+- `rag_engine.py`: 99% coverage
 
 ## Usage
 
@@ -149,15 +155,19 @@ The easiest way to use the RAG system is through the Streamlit web interface:
 ```
 
 This opens a web UI at `http://localhost:8501` with:
-- **Sidebar**: Ollama controls (start/stop, model selection), file upload, document list with delete, indexing buttons
+- **Sidebar**: Ollama controls (start/stop, model selection), file upload, document list with delete, reindex button, new project creation
 - **Main area**: Chat interface with conversation history
 
 Features in the UI:
 - Upload documents via drag-and-drop or file picker
 - Delete documents with confirmation dialog
-- Index or reindex documents with visual feedback
+- Reindex documents (auto-indexing on upload, manual reindex available)
 - Chat with your documents in a conversational interface
 - **View source citations**: Expand the "📚 Source references" panel to see which documents were used for each answer
+- **Message timestamps**: Each message shows HH:MM time
+- **Copy responses**: 📋 button on every assistant message to copy to clipboard
+- **Regenerate response**: 🔄 button to re-query the LLM for a fresh answer
+- **Toast notifications**: Immediate feedback for uploads, deletions, project creation, and chat actions
 - Clear chat history anytime
 
 ### CLI Mode
@@ -235,7 +245,8 @@ custom-rag/
 ├── projects/               # Base directory for all projects
 │   ├── default/            # The default project
 │   │   ├── data/           # PDF/TXT files for this project
-│   │   └── chroma_db/      # Vector database for this project
+│   │   ├── chroma_db/      # Vector database for this project
+│   │   └── chat_history.json  # Persisted chat memory (auto-created)
 │   └── ...                 # Additional projects
 ├── tests/                  # Pytest suite (unit & integration)
 ├── start-rag.sh            # Setup & run script
@@ -245,8 +256,12 @@ custom-rag/
 ├── tests/                 # Test suite
 │   ├── conftest.py        # Pytest fixtures
 │   ├── unit/
-│   │   ├── test_rag_engine.py      # Core RAGEngine tests (18 tests)
-│   │   └── test_rag_sources.py       # Source citations tests (10 tests)
+│   │   ├── test_rag_engine.py        # Core RAGEngine tests
+│   │   ├── test_rag_sources.py     # Source citations tests
+│   │   ├── test_app_upload.py        # Upload handling regression tests
+│   │   ├── test_upload_filename.py   # Filename handling tests
+│   │   ├── test_project_manager.py   # Project management tests
+│   │   └── test_garbled_detection.py # Text sanitization tests
 │   └── integration/
 │       ├── test_app_ollama.py
 │       ├── test_chat_flow.py
@@ -262,15 +277,13 @@ custom-rag/
 
 Potential improvements and experiments to explore:
 
-- ✅ **Create an interactive UI for the RAG**: ~~Build a web-based or desktop GUI interface to make the RAG system more accessible to non-technical users~~ **DONE** - Streamlit UI implemented with file management, indexing, and chat
 - Test the UI with different document types and sizes
 - Improve the UI with better error handling and user feedback
-- **UI interface broken for single and multi file projects, test, debug and fix**
 - **Chunk size optimization experiments**: Test different chunk sizes and overlap settings to find optimal balance between context preservation and retrieval precision
-- **Retrieval tuning differences with similarity_top_k and response_mode**: Experiment with different `similarity_top_k` values (e.g., 3, 5, 10) and response modes (`compact`, `tree_summarize`, `accumulate`) to optimize answer quality
-- ✅ **Source citations in chat**: ~~Show which document chunks were used to generate each answer~~ **DONE** - Implemented `query_with_sources()` with Perplexity-style numbered references and expandable source panel
-- **Conversation memory**: Enable multi-turn context-aware conversations using chat history
-- ✅ **Multiple collection support**: ~~Allow organizing documents into separate collections/projects~~ **DONE** - Implemented isolated `projects/` directories, each with its own data and ChromaDB folder
+- **Retrieval tuning differences with similarity_top_k and response_mode**: Experiment with different `similarity_top_k` values (e.g., 3, 5, 10) and response modes (`default`, `compact`, `tree_summarize`, `accumulate`) to optimize answer quality
+- **Response mode selector**: User might want to select response mode depending on what they want at that moment from RAG
+- ~~**Conversation memory**: Enable multi-turn context-aware conversations using chat history.~~ ✅ Done — uses `ContextChatEngine` with per-project persisted `SimpleChatStore`
+- ~~**Improve the UI with better error handling and user feedback**~~ ✅ Done — toast notifications, status indicators, timestamps, copy & regenerate buttons
 - **Export chat history**: Save conversations to JSON or Markdown files
 - **Create eval tests** for the RAG system to evaluate answer quality and citation accuracy between models, chunk sizes, and retrieval strategies
 - **Fix citation engine** to properly handle citations and sources, maybe experiment with custom citation engine instead of llmaindex built in
