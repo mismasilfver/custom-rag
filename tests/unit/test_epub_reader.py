@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from llama_index.core.schema import Document
 
 from epub_reader import EpubReader
@@ -45,15 +46,14 @@ class TestEpubReader:
         for doc in docs:
             assert "file_name" in doc.metadata or doc.metadata == {}
 
-    def test_load_data_returns_empty_list_for_corrupt_epub(self, tmp_path):
-        """A corrupt/non-EPUB file must not raise; reader returns empty list."""
+    def test_load_data_raises_for_corrupt_epub(self, tmp_path):
+        """A corrupt/non-EPUB file must raise so the caller can log and skip it."""
         corrupt_file = tmp_path / "corrupt.epub"
         corrupt_file.write_bytes(b"not an epub")
 
         reader = EpubReader()
-        docs = reader.load_data(corrupt_file)
-
-        assert docs == []
+        with pytest.raises(Exception):
+            reader.load_data(corrupt_file)
 
     def test_load_data_returns_empty_list_when_no_document_items(self, tmp_path):
         """An EPUB with no document items must produce an empty document list."""

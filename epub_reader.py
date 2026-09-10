@@ -57,11 +57,7 @@ class EpubReader(BaseReader):
                 "Install them with: pip install ebooklib beautifulsoup4"
             ) from err
 
-        try:
-            book = epub.read_epub(str(file), options={"ignore_ncx": True})
-        except Exception as err:
-            logger.warning(f"Failed to read EPUB file '{file}': {err}")
-            return []
+        book = epub.read_epub(str(file), options={"ignore_ncx": True})
 
         metadata = dict(extra_info) if extra_info else {}
         text_parts = []
