@@ -358,11 +358,40 @@ def render_chat_section(engine, chat_history_path):
 
     # Clear chat button
     if st.session_state.messages:
-        if st.button("🗑️ Clear chat history", key="clear_chat"):
-            engine.clear_chat_history(chat_history_path)
-            st.session_state.messages = []
-            st.toast("🗑️ Chat history cleared", icon="🧹")
-            st.rerun()
+        col_clear, col_export = st.columns([1, 1])
+        with col_clear:
+            if st.button("🗑️ Clear chat history", key="clear_chat"):
+                engine.clear_chat_history(chat_history_path)
+                st.session_state.messages = []
+                st.toast("🗑️ Chat history cleared", icon="🧹")
+                st.rerun()
+
+        with col_export:
+            with st.expander("💾 Export"):
+                include_sources = st.checkbox(
+                    "Include source references",
+                    value=False,
+                    key="export_include_sources",
+                )
+
+                if st.session_state.messages:
+                    project = st.session_state.current_project
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    filename = f"chat_export_{project}_{timestamp}.md"
+
+                    markdown_content = engine.export_conversation_to_markdown(
+                        st.session_state.messages,
+                        include_sources=include_sources,
+                        project_name=project,
+                    )
+
+                    st.download_button(
+                        label="📥 Download Markdown",
+                        data=markdown_content,
+                        file_name=filename,
+                        mime="text/markdown",
+                        key="download_export",
+                    )
 
 
 def render_ollama_section(engine):
