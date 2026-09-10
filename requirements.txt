@@ -7,5 +7,6 @@ pypdf>=4.0
 llama-index-readers-file>=0.4.0
 pymupdf>=1.24.0
 pymupdf4llm>=0.0.17
+ebooklib>=0.18
 streamlit>=1.30.0
 st-copy>=0.1.0
