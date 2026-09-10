@@ -30,6 +30,7 @@ addopts = [
     "--cov=app",
     "--cov=project_manager",
     "--cov=constants",
+    "--cov=epub_reader",
     "--cov-report=term-missing",
     "--cov-report=html:htmlcov",
     "--cov-report=xml",
