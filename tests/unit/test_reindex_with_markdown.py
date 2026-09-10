@@ -139,3 +139,41 @@ class TestReindexWithMarkdown:
 
         staging_dir = Path(engine.data_dir)
         assert (staging_dir / "notes.txt").exists()
+
+    def test_epub_files_are_copied_to_temp_dir(self, tmp_data_dir, tmp_chroma_dir):
+        """.epub files must be passed through to the staging directory unchanged."""
+        from rag_engine import RAGEngine
+
+        (tmp_data_dir / "book.epub").write_bytes(b"fake epub content")
+
+        engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
+
+        with (
+            patch("rag_engine.pymupdf4llm") as mock_pymupdf4llm,
+            patch.object(engine, "rebuild_index"),
+        ):
+            mock_pymupdf4llm.to_markdown.return_value = "# converted"
+            engine.reindex_with_markdown()
+
+        staging_dir = Path(engine.data_dir)
+        assert (staging_dir / "book.epub").exists()
+
+    def test_corrupt_pdf_does_not_stop_other_files(self, tmp_data_dir, tmp_chroma_dir):
+        """A PDF that fails conversion must be skipped; other files still process."""
+        from rag_engine import RAGEngine
+
+        (tmp_data_dir / "bad.pdf").write_bytes(b"%PDF-1.4 fake")
+        (tmp_data_dir / "good.txt").write_text("plain text notes")
+
+        engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
+
+        with (
+            patch("rag_engine.pymupdf4llm") as mock_pymupdf4llm,
+            patch.object(engine, "rebuild_index"),
+        ):
+            mock_pymupdf4llm.to_markdown.side_effect = Exception("cannot read pdf")
+            engine.reindex_with_markdown()
+
+        staging_dir = Path(engine.data_dir)
+        assert (staging_dir / "good.txt").exists()
+        assert not (staging_dir / "bad.md").exists()
