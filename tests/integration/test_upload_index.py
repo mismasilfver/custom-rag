@@ -76,6 +76,17 @@ class TestUploadIndexFlow:
         files = engine.list_data_files()
         assert files == ["valid.txt"]
 
+    def test_upload_epub_is_accepted(
+        self, tmp_data_dir, tmp_chroma_dir, sample_epub_file
+    ):
+        """EPUB files must be accepted and listed like other documents."""
+        engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
+
+        engine.upload_files([str(sample_epub_file)])
+
+        files = engine.list_data_files()
+        assert files == ["sample.epub"]
+
     def test_reindex_clears_and_rebuilds_index(
         self, tmp_data_dir, tmp_chroma_dir, sample_txt_file
     ):
@@ -146,7 +157,7 @@ class TestResetIntegrationFlow:
         assert files == ["second.txt"]
 
     def test_reset_preserves_non_document_files(self, tmp_data_dir, tmp_chroma_dir):
-        """Reset should only delete supported document types (.pdf, .doc, .docx, .txt, .md)."""  # noqa: E501
+        """Reset should only delete supported document types (.pdf, .doc, .docx, .txt, .md, .epub)."""  # noqa: E501
         engine = RAGEngine(data_dir=str(tmp_data_dir), chroma_dir=str(tmp_chroma_dir))
 
         # Create various files

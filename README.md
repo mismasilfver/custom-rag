@@ -54,6 +54,7 @@ The following changes have been made to the original tutorial code:
 | `llama-index-vector-stores-chroma>=0.5.0` | ChromaDB vector store connector |
 | `chromadb>=0.5.0` | Chroma vector database for embedding storage |
 | `pypdf>=4.0` | PDF text extraction library |
+| `ebooklib>=0.18` | EPUB e-book parsing for text extraction |
 | `streamlit>=1.30.0` | Web UI framework for interactive interface |
 | `st-copy>=0.1.0` | Copy-to-clipboard button component for chat responses |
 
@@ -62,6 +63,7 @@ The following changes have been made to the original tutorial code:
 The RAG system supports the following document formats:
 - PDF (`.pdf`)
 - Microsoft Word (`.doc`, `.docx`)
+- EPUB e-books (`.epub`)
 - Plain text (`.txt`)
 - Markdown (`.md`)
 
@@ -95,7 +97,7 @@ The RAG system supports the following document formats:
    ```
 
 4. **Add your documents**:
-   Place PDF, Word, or text files in the `data/` directory
+   Place PDF, Word, EPUB, or text files in the `data/` directory
 
 ## Development Dependencies
 

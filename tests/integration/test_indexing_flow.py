@@ -61,6 +61,7 @@ class TestResetFlow:
 
         (tmp_data_dir / "config.json").write_text('{"key": "value"}')
         (tmp_data_dir / "notes.txt").write_text("a document")
+        (tmp_data_dir / "book.epub").write_bytes(b"fake epub")
 
         engine.reset()
 

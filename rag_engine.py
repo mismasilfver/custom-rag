@@ -25,6 +25,7 @@ from llama_index.readers.file import PyMuPDFReader
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
 from constants import CITATION_PROMPT_TEMPLATE, SUPPORTED_EXTENSIONS
+from epub_reader import EpubReader
 
 COLLECTION_NAME = "documents"
 
@@ -290,10 +291,16 @@ class RAGEngine:
                 if not f.is_file():
                     continue
                 if f.suffix.lower() == ".pdf":
-                    md_text = pymupdf4llm.to_markdown(str(f))
-                    (staging_path / f"{f.stem}.md").write_text(
-                        md_text, encoding="utf-8"
-                    )
+                    try:
+                        md_text = pymupdf4llm.to_markdown(str(f))
+                        (staging_path / f"{f.stem}.md").write_text(
+                            md_text, encoding="utf-8"
+                        )
+                    except Exception as err:
+                        logger.warning(
+                            f"Failed to convert PDF '{f.name}' to Markdown, "
+                            f"skipping: {err}"
+                        )
                 elif f.suffix.lower() in SUPPORTED_EXTENSIONS:
                     shutil.copy2(str(f), str(staging_path / f.name))
 
@@ -304,6 +311,51 @@ class RAGEngine:
                 self.data_dir = original_data_dir
 
         return True
+
+    def _load_documents_with_error_handling(self, data_path):
+        """Load supported documents from ``data_path`` one file at a time.
+
+        Files that cannot be read are logged and skipped so that one bad
+        document does not prevent indexing of the remaining files.
+
+        Args:
+            data_path: Path object pointing to the project data directory.
+
+        Returns:
+            Tuple of (documents, failed_file_names) where documents is a list
+            of LlamaIndex Document objects and failed_file_names is a list of
+            files that could not be read.
+        """
+        custom_extractors = {
+            ".pdf": PyMuPDFReader(),
+            ".epub": EpubReader(),
+        }
+        docs = []
+        failed_files = []
+
+        for file_path in data_path.iterdir():
+            if not file_path.is_file():
+                continue
+            ext = file_path.suffix.lower()
+            if ext not in SUPPORTED_EXTENSIONS:
+                continue
+
+            try:
+                reader = custom_extractors.get(ext)
+                if reader:
+                    file_docs = reader.load_data(
+                        file_path, extra_info={"file_name": file_path.name}
+                    )
+                else:
+                    file_docs = SimpleDirectoryReader(
+                        input_files=[str(file_path)]
+                    ).load_data()
+                docs.extend(file_docs)
+            except Exception as err:
+                logger.warning(f"Failed to read '{file_path.name}', skipping: {err}")
+                failed_files.append(file_path.name)
+
+        return docs, failed_files
 
     def _build_index(self, force=False):
         """Internal: build or load the vector index."""
@@ -347,12 +399,16 @@ class RAGEngine:
             logger.info("Existing index loaded successfully")
         else:
             logger.info("Loading documents and generating embeddings...")
-            docs = SimpleDirectoryReader(
-                self.data_dir,
-                file_extractor={".pdf": PyMuPDFReader()},
-            ).load_data()
+            docs, failed_files = self._load_documents_with_error_handling(
+                Path(self.data_dir)
+            )
             if not docs:
                 raise ValueError(f"No documents found in {self.data_dir}")
+            if failed_files:
+                logger.warning(
+                    f"Skipped {len(failed_files)} unreadable file(s): "
+                    f"{', '.join(failed_files)}"
+                )
             collection = chroma_client.get_or_create_collection(COLLECTION_NAME)
             vector_store = ChromaVectorStore(chroma_collection=collection)
             storage_context = StorageContext.from_defaults(vector_store=vector_store)

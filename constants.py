@@ -1,7 +1,7 @@
 """Shared constants for the RAG system."""
 
 # Supported file extensions for document processing
-SUPPORTED_EXTENSIONS = frozenset({".pdf", ".doc", ".docx", ".txt", ".md"})
+SUPPORTED_EXTENSIONS = frozenset({".pdf", ".doc", ".docx", ".txt", ".md", ".epub"})
 
 # Chat engine configuration
 CHAT_TOKEN_LIMIT = 3000
