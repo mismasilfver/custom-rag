@@ -287,6 +287,7 @@ Potential improvements and experiments to explore:
 - ~~**Conversation memory**: Enable multi-turn context-aware conversations using chat history.~~ ✅ Done — uses `ContextChatEngine` with per-project persisted `SimpleChatStore`
 - ~~**Improve the UI with better error handling and user feedback**~~ ✅ Done — toast notifications, status indicators, timestamps, copy & regenerate buttons
 - **Export chat history**: Save conversations to JSON or Markdown files
+- **Split EPUBs per chapter** for finer-grained retrieval and chapter-level source citations instead of indexing the whole book as one document
 - **Create eval tests** for the RAG system to evaluate answer quality and citation accuracy between models, chunk sizes, and retrieval strategies
 - **Fix citation engine** to properly handle citations and sources, maybe experiment with custom citation engine instead of llmaindex built in
 
